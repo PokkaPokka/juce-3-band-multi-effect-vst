@@ -21,13 +21,17 @@ public:
     ~_3BandMultiEffectorAudioProcessor() override;
 
     //==============================================================================
+    // Prepare resources before playback starts
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+    // Clean up resoruces when playback stops
     void releaseResources() override;
 
    #ifndef JucePlugin_PreferredChannelConfigurations
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
    #endif
-
+    
+    // The host sends buffers at a regular rate, and this method renders the next block
+    // Where the audio processing happens
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     //==============================================================================
@@ -50,8 +54,15 @@ public:
     void changeProgramName (int index, const juce::String& newName) override;
 
     //==============================================================================
+    // State management: saves and restores plugin states
+    // Ensuring settings persist between sessions
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    // Parameter management: managing parameters in a structured and automatable way
+    // Allowing integrating sliders, knobs, and other UI elements in the plugin editor
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    juce::AudioProcessorValueTreeState apvts{*this, nullptr, "Parameters", createParameterLayout()};
 
 private:
     //==============================================================================
