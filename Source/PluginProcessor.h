@@ -10,11 +10,19 @@
 
 #include <JuceHeader.h>
 
+enum Slope
+{
+    Slope_12,
+    Slope_24,
+    Slope_36,
+    Slope_48
+};
+
 struct ChainSettings
 {
     float peakFreq {0}, peakGainInDeciibels{0}, peakQuality{1.f};
     float lowCutFreq{0}, highCutFreq{0};
-    float lowCutSlope{0}, hightCutSlop{0};
+    Slope lowCutSlope {Slope::Slope_12}, highCutSlope {Slope::Slope_12};
 };
 
 // A reference to the TreeState, which manages and connects parameter states in
