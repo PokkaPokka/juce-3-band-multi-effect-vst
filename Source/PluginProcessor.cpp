@@ -102,6 +102,15 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
     
     leftChain.prepare(spec);
     rightChain.prepare(spec);
+    
+    auto chainSettings = getChainSettings(apvts);
+    auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate,
+                                                                                chainSettings.peakFreq,
+                                                                                chainSettings.peakQuality,
+                                                                                juce::Decibels::decibelsToGain(chainSettings.peakGainInDeciibels));
+    
+    *leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+    *rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
 }
 
 void _3BandMultiEffectorAudioProcessor::releaseResources()
@@ -150,6 +159,15 @@ void _3BandMultiEffectorAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
+    
+    auto chainSettings = getChainSettings(apvts);
+    auto peakCoefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter(getSampleRate(),
+                                                                                chainSettings.peakFreq,
+                                                                                chainSettings.peakQuality,
+                                                                                juce::Decibels::decibelsToGain(chainSettings.peakGainInDeciibels));
+    
+    *leftChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
+    *rightChain.get<ChainPositions::Peak>().coefficients = *peakCoefficients;
 
     juce::dsp::AudioBlock<float> block(buffer);
     auto leftBlock = block.getSingleChannelBlock(0);
@@ -188,23 +206,38 @@ void _3BandMultiEffectorAudioProcessor::setStateInformation (const void* data, i
     // whose contents will have been created by the getStateInformation() call.
 }
 
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
+{
+    ChainSettings settings;
+    
+    settings.lowCutFreq = apvts.getRawParameterValue("Low-Cut Frequency")->load();
+    settings.highCutFreq = apvts.getRawParameterValue("High-Cut Frequency")->load();
+    settings.peakFreq = apvts.getRawParameterValue("Peak Frequency")->load();
+    settings.peakGainInDeciibels = apvts.getRawParameterValue("Peak Gain")->load();
+    settings.peakQuality = apvts.getRawParameterValue("Peak Quality")->load();
+    settings.lowCutSlope = apvts.getRawParameterValue("Low-Cut Slope")->load();
+    settings.hightCutSlop = apvts.getRawParameterValue("High-Cut Slope")->load();
+    
+    return settings;
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Low-Cut Frequency", 1),
                                                            "Low-Cut Freqeuncy",
-                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
+                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
                                                            20.f));
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("High-Cut Frequency", 1),
                                                            "High-Cut Freqeuncy",
-                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
+                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
                                                            20000.f));
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Peak Frequency", 1),
                                                            "Peak Freqeuncy",
-                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 1.f),
+                                                           juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
                                                            750.f));
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Peak Gain", 1),

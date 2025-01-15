@@ -10,6 +10,17 @@
 
 #include <JuceHeader.h>
 
+struct ChainSettings
+{
+    float peakFreq {0}, peakGainInDeciibels{0}, peakQuality{1.f};
+    float lowCutFreq{0}, highCutFreq{0};
+    float lowCutSlope{0}, hightCutSlop{0};
+};
+
+// A reference to the TreeState, which manages and connects parameter states in
+// plugins to the actual processing logic
+ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
+
 //==============================================================================
 /**
 */
@@ -72,6 +83,13 @@ private:
     using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
     
     MonoChain leftChain, rightChain;
+    
+    enum ChainPositions
+    {
+        LowCut,
+        Peak,
+        HightCut
+    };
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessor)
