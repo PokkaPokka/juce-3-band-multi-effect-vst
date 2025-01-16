@@ -78,16 +78,22 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
     
-    // Parameter management: managing parameters in a structured and automatable way
-    // Allowing integrating sliders, knobs, and other UI elements in the plugin editor
+    // Parameter management: managing parameters in a structured and automatable way,
+    // allowing integrating sliders, knobs, and other UI elements in the plugin editor
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     juce::AudioProcessorValueTreeState apvts{*this, nullptr, "Parameters", createParameterLayout()};
 
 private:
+    // Defines Filter as an alias for the JUCE Infinite Impulse Response (IIR) filter,
+    // which processes audio by applying various frequency-dependent effects like
+    // low-pass, high-pass, or peak filters.
     using Filter = juce::dsp::IIR::Filter<float>;
     
+    // A chain of four filters
+    // Used to construct high-order filters by cascading multiple simple filters
     using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
     
+    // Consists of a low-cut, a peak, and a high-cut filter
     using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
     
     MonoChain leftChain, rightChain;
@@ -99,6 +105,11 @@ private:
         HightCut
     };
     
+    // Update the peak filter coefficients (frequency, gain, and quality factor)
+    // based on user settings stored in ChainSettings
+    void updatePeakFilter(const ChainSettings& chainSettings);
+    using Coefficients = Filter::CoefficientsPtr;
+    static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessor)
 };
