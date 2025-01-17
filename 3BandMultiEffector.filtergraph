@@ -65,7 +65,7 @@
           uiopen_Normal="0">
     <PLUGIN name="3BandMultiEffector" format="VST3" category="Fx" manufacturer="yourcompany"
             version="1.0.0" file="/Users/scottwu/Library/Audio/Plug-Ins/VST3/3BandMultiEffector.vst3"
-            uniqueId="5a0d92f" isInstrument="0" fileTime="1946b406eb0" infoUpdateTime="1946c160404"
+            uniqueId="5a0d92f" isInstrument="0" fileTime="19470856efe" infoUpdateTime="19470a279e0"
             numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0"
             uid="acfdc3f8"/>
     <STATE>191.VMjLgXK....O+fWarAhckI2bo8la8HRLt.iHfTlai8FYo41Y8HRUTYTK3HxO9.BOVMEUy.Ea0cVZtMEcgQWY9vSRC8Vav8lak4Fc9XCLt3hKt3hKt3hKt3hYRUUSTEETIckVwTjQisVTTgkdEYjKAQjYPQSPWgUdMcjKAQjct3hdA4hKt3hKt3hKtnTUv.UQAslXuk0UXoWUFE0YQcEV77RRC8Vav8lak4Fc9vyKVMEUy.Ea0cVZtMEcgQWY9..</STATE>
@@ -78,11 +78,11 @@
       </OUTPUTS>
     </LAYOUT>
   </FILTER>
-  <FILTER uid="6" x="0.53875" y="0.2471042471042471" useARA="0" uiLastX_Normal="175"
-          uiLastY_Normal="224" uiopen_Normal="0">
+  <FILTER uid="6" x="0.53875" y="0.2479166666666667" useARA="0" uiLastX_Normal="175"
+          uiLastY_Normal="224" uiopen_Normal="1">
     <PLUGIN name="AUAudioFilePlayer" format="AudioUnit" category="Generator"
             manufacturer="Apple" version="1.6.0" file="AudioUnit:Generators/augn,afpl,appl"
-            uniqueId="6163676e" isInstrument="0" fileTime="0" infoUpdateTime="1946c160405"
+            uniqueId="6163676e" isInstrument="0" fileTime="0" infoUpdateTime="19470a279e1"
             numInputs="0" numOutputs="2" isShell="0" hasARAExtension="0"
             uid="6163676e"/>
     <STATE>563.hAGaoMGcv.C1AHv.DTfAGfPBJr.Gc3wGgvUag4VclE1XzUmbkIGUjEFcg8EDarVPUAkbkMWYzAUYxMWZyQWYtQ2TzEFcksTY4c0b0IFc4AWYWYWYxMWZu4FUzkGbk8EDOXVZrUVKxUlYkIWYtMVYyQkag0VYRDFbvwFPgxvzM3vCPDQFXYTZrUlSg0VYWIUYmk1atMmWIM2TkwVYiQWYjYTZrU1WPTzKUMWYxM2KyM1azQ2c08RS0MWZi8BSucVZi8BTkI2bu4VXrABTx8lZkMFcuDDahUWafDyKS8VczgFHJ8Vcx4VY44RXoYVnRP8DTTgEWfQFZ3kTkcVZu4FQuU1bL81avokTkcVZu4FQgQWXeAADIM2TkwVYiQWYjIUYmk1atokTkcVZu4lSg0VYH7DDvA...........ilY...X...................XiaTP..........vXz8RPrIVcsUhLvDyKS8VcA.....iRuUG.....................................+++2AA..........dhpGA.....PBZ4TY2AhTkcVZu4VBRDlYvwFD.HQX0claQCBDVYTZrUFHwfUUtQWZzwVYjA.B.jA.l.vJ.jD.QAPV.3E.vAPc.nG.6APe.PH.MBPk.PJ.rCf6.be.FDPDAPR.uD.LALZ.jFvqA.a.0FvsAva.+Ffw........BD..........h...................A7L</STATE>
