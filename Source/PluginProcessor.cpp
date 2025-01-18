@@ -278,10 +278,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
                                                            1.f));
     
     juce::StringArray stringArray;
+    juce::String unit = " dB/Oct";
     for (int i = 0; i < 4; ++i) {
         juce::String str;
         str << (12 + i * 12);
-        stringArray.add(str);
+        stringArray.add(str + unit);
     }
     
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("Low-Cut Slope", 1), "Low-Cut Slope", stringArray, 0));
