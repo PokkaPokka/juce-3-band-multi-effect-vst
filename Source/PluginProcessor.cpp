@@ -107,19 +107,8 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
     
     // Get current filter settings from the AudioProcessorValueTreeState (sliders)
     auto chainSettings = getChainSettings(apvts);
-    // Update the peak filter in the DSP chain using the retrived settings
-    updatePeakFilter(chainSettings);
-    
-    // Design the coefficients for the low-cut filter using filter freq, sample rate, and slope from the current chain settings
-    auto cutCoefficient = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq, sampleRate, 2 * (chainSettings.lowCutSlope + 1));
-    
-    // Access the low-cut filter component in both channels processing chain
-    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
-    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
-    
-    // Update both channel's low-cut filter with designed coefficients and slope settings
-    updateCutFilter(leftLowCut, cutCoefficient, chainSettings.lowCutSlope);
-    updateCutFilter(rightLowCut, cutCoefficient, chainSettings.lowCutSlope);
+
+    updateFilters();
 }
 
 void _3BandMultiEffectorAudioProcessor::releaseResources()
@@ -164,19 +153,7 @@ void _3BandMultiEffectorAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
     
-    // Get and update the current settings for the DSP chain from the user-controlled parameters
-    auto chainSettings = getChainSettings(apvts);
-    updatePeakFilter(chainSettings);
-    
-    // Design the coefficients for a low-cut filter based on the low-cut freq, sample rate, and slope specified in the cahin settings
-    auto cutCoefficient = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq, getSampleRate(), 2 * (chainSettings.lowCutSlope + 1));
-    
-    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
-    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
-    
-    // Access the low-cut filter component in both channels processing chain
-    updateCutFilter(leftLowCut, cutCoefficient, chainSettings.lowCutSlope);
-    updateCutFilter(rightLowCut, cutCoefficient, chainSettings.lowCutSlope);
+    updateFilters();
     
     // Create an AudioBlock wrapper around the buffer for processing audio data in a flexible way
     juce::dsp::AudioBlock<float> block(buffer);
@@ -246,6 +223,36 @@ void _3BandMultiEffectorAudioProcessor::updatePeakFilter(const ChainSettings &ch
 void _3BandMultiEffectorAudioProcessor::updateCoefficients(Coefficients &old, const Coefficients &replacements)
 {
     *old = *replacements;
+}
+
+void _3BandMultiEffectorAudioProcessor::updateLowCutFilters(const ChainSettings &chainSettings)
+{
+    auto lowCutCoefficient = juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq, getSampleRate(), 2 * (chainSettings.lowCutSlope + 1));
+    
+    auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
+    auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
+    
+    updateCutFilter(leftLowCut, lowCutCoefficient, chainSettings.lowCutSlope);
+    updateCutFilter(rightLowCut, lowCutCoefficient, chainSettings.lowCutSlope);
+}
+
+void _3BandMultiEffectorAudioProcessor::updateHighCutFilters(const ChainSettings &chainSettings)
+{
+    auto highCutCoefficient = juce::dsp::FilterDesign<float>::designIIRLowpassHighOrderButterworthMethod(chainSettings.highCutFreq, getSampleRate(), 2 * (chainSettings.highCutSlope + 1));
+
+    auto& leftHighCut = leftChain.get<ChainPositions::HighCut>();
+    auto& rightHighCut = rightChain.get<ChainPositions::HighCut>();
+
+    updateCutFilter(leftHighCut, highCutCoefficient, chainSettings.highCutSlope);
+    updateCutFilter(rightHighCut, highCutCoefficient, chainSettings.highCutSlope);
+}
+
+void _3BandMultiEffectorAudioProcessor::updateFilters()
+{
+    auto chainSettings = getChainSettings(apvts);
+    updateLowCutFilters(chainSettings);
+    updatePeakFilter(chainSettings);
+    updateHighCutFilters(chainSettings);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProcessor::createParameterLayout()

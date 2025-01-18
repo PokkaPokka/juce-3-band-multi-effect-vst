@@ -102,7 +102,7 @@ private:
     {
         LowCut,
         Peak,
-        HightCut
+        HighCut
     };
     
     // Update the peak filter coefficients (frequency, gain, and quality factor)
@@ -111,10 +111,18 @@ private:
     using Coefficients = Filter::CoefficientsPtr;
     static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
     
+    // Updates the coefficients for a specific stage in the filter chain.
+    // 'Index' determines which filter stage (e.g., stage 0, 1, 2, or 3) to update.
+    // 'chain' is the filter chain containing the filter stages.
+    // 'cutCoefficients' is an array of coefficient pointers, each corresponding to a filter stage.
     template<int Index, typename ChainType, typename CoefficientType>
     void update(ChainType& chain, const CoefficientType& cutCoefficients)
     {
+        // Replace the current coefficients of the filter stage with the new coefficients.
+        // This adjusts the filter's behavior (e.g., frequency, slope) for that stage.
         updateCoefficients(chain.template get<Index>().coefficients, cutCoefficients[Index]);
+        // Enable the filter stage by setting its 'bypassed' state to 'false'.
+        // This ensures the updated filter stage becomes active in the audio processing chain.
         chain.template setBypassed<Index>(false);
     }
     
@@ -152,6 +160,10 @@ private:
             }
         }
     }
+    
+    void updateLowCutFilters(const ChainSettings& chainSettings);
+    void updateHighCutFilters(const ChainSettings& chainSettings);
+    void updateFilters();
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessor)
 };
