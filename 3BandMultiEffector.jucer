@@ -5,12 +5,13 @@
   <MAINGROUP id="DTttCf" name="3BandMultiEffector">
     <GROUP id="{CF89B538-F261-9C7E-D8EA-8618A283AB02}" name="Source">
       <FILE id="XZaryt" name="PluginProcessor.cpp" compile="1" resource="0"
-            file="Source/PluginProcessor.cpp"/>
+            file="Source/PluginProcessor.cpp" xcodeResource="0"/>
       <FILE id="AHrxJB" name="PluginProcessor.h" compile="0" resource="0"
-            file="Source/PluginProcessor.h"/>
+            file="Source/PluginProcessor.h" xcodeResource="0"/>
       <FILE id="i8xdn1" name="PluginEditor.cpp" compile="1" resource="0"
-            file="Source/PluginEditor.cpp"/>
-      <FILE id="dDIkwk" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+            file="Source/PluginEditor.cpp" xcodeResource="0"/>
+      <FILE id="dDIkwk" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"
+            xcodeResource="0"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

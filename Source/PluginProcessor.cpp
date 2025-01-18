@@ -177,8 +177,8 @@ bool _3BandMultiEffectorAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* _3BandMultiEffectorAudioProcessor::createEditor()
 {
-//    return new _3BandMultiEffectorAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new _3BandMultiEffectorAudioProcessorEditor (*this);
+//    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -187,15 +187,23 @@ void _3BandMultiEffectorAudioProcessor::getStateInformation (juce::MemoryBlock& 
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+    
+    juce::MemoryOutputStream mos(destData, true);
+    apvts.state.writeToStream(mos);
 }
 
 void _3BandMultiEffectorAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+    auto tree = juce::ValueTree::readFromData(data, sizeInBytes);
+    if (tree.isValid()) {
+        apvts.replaceState(tree);
+        updateFilters();
+    }
 }
 
-//==============================================================================
+//============================================================================== Helper Functions ==============================================================================//
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
 {
     ChainSettings settings;
@@ -219,7 +227,6 @@ void _3BandMultiEffectorAudioProcessor::updatePeakFilter(const ChainSettings &ch
     updateCoefficients(rightChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
 }
 
-//==============================================================================
 void _3BandMultiEffectorAudioProcessor::updateCoefficients(Coefficients &old, const Coefficients &replacements)
 {
     *old = *replacements;
@@ -255,6 +262,7 @@ void _3BandMultiEffectorAudioProcessor::updateFilters()
     updateHighCutFilters(chainSettings);
 }
 
+//============================================================================== Parameter Layout ==============================================================================//
 juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
