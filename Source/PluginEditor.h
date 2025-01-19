@@ -20,6 +20,14 @@ struct CustomRotarySlider: juce::Slider
     };
 };
 
+struct CustomHorizontalSlider: juce::Slider
+{
+    CustomHorizontalSlider(): juce::Slider(juce::Slider::SliderStyle::LinearHorizontal,
+                                           juce::Slider::TextEntryBoxPosition::NoTextBox)
+    {
+        
+    };
+};
 //==============================================================================
 /**
 */
@@ -38,7 +46,25 @@ private:
     // access the processor object that created it.
     _3BandMultiEffectorAudioProcessor& audioProcessor;
 
-    CustomRotarySlider peakFreqSlider, peakGainSlider, peakQualitySlider, lowCutFreqSlider, highCutFreqSlider, lowCutSlopeSlider, highCutSlopeSlider;
+    CustomRotarySlider peakFreqSlider,
+                        peakGainSlider,
+                        peakQualitySlider,
+                        lowCutFreqSlider,
+                        highCutFreqSlider;
+
+    CustomHorizontalSlider lowCutSlopeSlider, highCutSlopeSlider;
+    
+    // Alias to make this extra name looks cleaner
+    using APVTS = juce::AudioProcessorValueTreeState;
+    using Attachment = APVTS::SliderAttachment;
+    
+    Attachment peakFreqSliderAttachment,
+                peakGainSliderAttachment,
+                peakQualitySliderAttachment,
+                lowCutFreqSliderAttachment,
+                highCutFreqSliderAttachment,
+                lowCutSlopeSliderAttachment,
+                highCutSlopeSliderAttachment;
     
     std::vector<juce::Component*> getComps();
     
