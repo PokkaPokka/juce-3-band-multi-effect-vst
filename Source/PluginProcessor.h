@@ -29,6 +29,30 @@ struct ChainSettings
 // plugins to the actual processing logic
 ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts);
 
+// Defines Filter as an alias for the JUCE Infinite Impulse Response (IIR) filter,
+// which processes audio by applying various frequency-dependent effects like
+// low-pass, high-pass, or peak filters.
+using Filter = juce::dsp::IIR::Filter<float>;
+
+// A chain of four filters
+// Used to construct high-order filters by cascading multiple simple filters
+using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
+
+// Consists of a low-cut, a peak, and a high-cut filter
+using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
+
+enum ChainPositions
+{
+    LowCut,
+    Peak,
+    HighCut
+};
+
+using Coefficients = Filter::CoefficientsPtr;
+void updateCoefficients(Coefficients& old, const Coefficients& replacements);
+
+Coefficients makePeakFilter(const ChainSettings& chainSettings, double sampleRate);
+
 //==============================================================================
 /**
 */
@@ -84,32 +108,11 @@ public:
     juce::AudioProcessorValueTreeState apvts{*this, nullptr, "Parameters", createParameterLayout()};
 
 private:
-    // Defines Filter as an alias for the JUCE Infinite Impulse Response (IIR) filter,
-    // which processes audio by applying various frequency-dependent effects like
-    // low-pass, high-pass, or peak filters.
-    using Filter = juce::dsp::IIR::Filter<float>;
-    
-    // A chain of four filters
-    // Used to construct high-order filters by cascading multiple simple filters
-    using CutFilter = juce::dsp::ProcessorChain<Filter, Filter, Filter, Filter>;
-    
-    // Consists of a low-cut, a peak, and a high-cut filter
-    using MonoChain = juce::dsp::ProcessorChain<CutFilter, Filter, CutFilter>;
-    
     MonoChain leftChain, rightChain;
-    
-    enum ChainPositions
-    {
-        LowCut,
-        Peak,
-        HighCut
-    };
     
     // Update the peak filter coefficients (frequency, gain, and quality factor)
     // based on user settings stored in ChainSettings
     void updatePeakFilter(const ChainSettings& chainSettings);
-    using Coefficients = Filter::CoefficientsPtr;
-    static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
     
     // Updates the coefficients for a specific stage in the filter chain.
     // 'Index' determines which filter stage (e.g., stage 0, 1, 2, or 3) to update.

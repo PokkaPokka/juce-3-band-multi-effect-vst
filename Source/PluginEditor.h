@@ -14,7 +14,7 @@
 
 struct CustomRotarySlider: juce::Slider
 {
-    CustomRotarySlider(): juce::Slider(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag, juce::Slider::TextEntryBoxPosition::NoTextBox)
+    CustomRotarySlider(): juce::Slider(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag, juce::Slider::TextEntryBoxPosition::TextBoxBelow)
     {
         
     };
@@ -23,7 +23,7 @@ struct CustomRotarySlider: juce::Slider
 struct CustomHorizontalSlider: juce::Slider
 {
     CustomHorizontalSlider(): juce::Slider(juce::Slider::SliderStyle::LinearHorizontal,
-                                           juce::Slider::TextEntryBoxPosition::NoTextBox)
+                                           juce::Slider::TextEntryBoxPosition::TextBoxBelow)
     {
         
     };
@@ -31,7 +31,8 @@ struct CustomHorizontalSlider: juce::Slider
 //==============================================================================
 /**
 */
-class _3BandMultiEffectorAudioProcessorEditor  : public juce::AudioProcessorEditor
+class _3BandMultiEffectorAudioProcessorEditor  : public juce::AudioProcessorEditor,
+juce::AudioProcessorParameter::Listener, juce::Timer
 {
 public:
     _3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor&);
@@ -40,12 +41,18 @@ public:
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
+    
+    void parameterValueChanged(int parameterIndex, float newValue) override;
+    void parameterGestureChanged(int parameterIndex, bool gestureIsStarting) override{};
+    void timerCallback() override;
 
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     _3BandMultiEffectorAudioProcessor& audioProcessor;
 
+    juce::Atomic<bool> parametersChanged{false};
+    
     CustomRotarySlider peakFreqSlider,
                         peakGainSlider,
                         peakQualitySlider,
@@ -67,6 +74,8 @@ private:
                 highCutSlopeSliderAttachment;
     
     std::vector<juce::Component*> getComps();
+    
+    MonoChain monoChain;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessorEditor)
 };
