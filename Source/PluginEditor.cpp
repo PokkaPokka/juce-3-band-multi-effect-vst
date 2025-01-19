@@ -9,39 +9,54 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-//==============================================================================
-_3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor& p)
-: AudioProcessorEditor (&p), audioProcessor (p),
-peakFreqSliderAttachment(audioProcessor.apvts, "Peak Frequency", peakFreqSlider),
-peakGainSliderAttachment(audioProcessor.apvts, "Peak Gain", peakGainSlider),
-peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySlider),
-lowCutFreqSliderAttachment(audioProcessor.apvts, "Low-Cut Frequency", lowCutFreqSlider),
-highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutFreqSlider),
-lowCutSlopeSliderAttachment(audioProcessor.apvts,"Low-Cut Slope", lowCutSlopeSlider),
-highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider)
+ResponseCurveComponent::ResponseCurveComponent(_3BandMultiEffectorAudioProcessor& p): audioProcessor(p)
 {
-    for (auto* comp: getComps())
-    {
-        addAndMakeVisible(comp);
+    const auto& params = audioProcessor.getParameters();
+    for (auto param: params) {
+        param->addListener(this);
     }
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize (600, 400);
+    
+    startTimerHz(60);
 }
 
-_3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
+ResponseCurveComponent::~ResponseCurveComponent()
 {
+    const auto& params = audioProcessor.getParameters();
+    for (auto param: params) {
+        param->removeListener(this);
+    }
 }
 
-//==============================================================================
-void _3BandMultiEffectorAudioProcessorEditor::paint (juce::Graphics& g)
+void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float newValue)
+{
+    parametersChanged.set(true);
+}
+
+void ResponseCurveComponent::timerCallback()
+{
+    if (parametersChanged.compareAndSetBool(false, true)) {
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+        auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+        
+        auto lowCutCoefficients = makeLowCutFilter(chainSettings, audioProcessor.getSampleRate());
+        auto highCutCoefficients = makeHighCutFilter(chainSettings, audioProcessor.getSampleRate());
+        
+        updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
+        updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
+        
+        repaint();
+    }
+}
+
+void ResponseCurveComponent::paint (juce::Graphics& g)
 {
     using namespace juce;
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (Colours::black);
+    g.fillAll (Colour::fromRGB(34, 40, 49));
     
     auto bounds = getLocalBounds();
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    auto responseArea = bounds;
     auto w = responseArea.getWidth();
     
     auto& lowcut = monoChain.get<ChainPositions::LowCut>();
@@ -99,11 +114,46 @@ void _3BandMultiEffectorAudioProcessorEditor::paint (juce::Graphics& g)
         responseCurve.lineTo(responseArea.getX() + i, map((mags[i])));
     }
     
-    g.setColour(Colours::orange);
+    g.setColour(Colour::fromRGB(49, 54, 63));
     g.drawRoundedRectangle(responseArea.toFloat(), 4.f, 1.f);
     
-    g.setColour(Colours::white);
+    g.setColour(Colour::fromRGB(238, 238, 238));
     g.strokePath(responseCurve, PathStrokeType(2.f));
+}
+
+//==============================================================================
+_3BandMultiEffectorAudioProcessorEditor::
+_3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor& p)
+: AudioProcessorEditor (&p), audioProcessor (p),
+responseCurveComponent(audioProcessor),
+peakFreqSliderAttachment(audioProcessor.apvts, "Peak Frequency", peakFreqSlider),
+peakGainSliderAttachment(audioProcessor.apvts, "Peak Gain", peakGainSlider),
+peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySlider),
+lowCutFreqSliderAttachment(audioProcessor.apvts, "Low-Cut Frequency", lowCutFreqSlider),
+highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutFreqSlider),
+lowCutSlopeSliderAttachment(audioProcessor.apvts,"Low-Cut Slope", lowCutSlopeSlider),
+highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider)
+{
+    for (auto* comp: getComps())
+    {
+        addAndMakeVisible(comp);
+    }
+    
+    // Make sure that before the constructor has finished, you've set the
+    // editor's size to whatever you need it to be.
+    setSize (600, 400);
+}
+
+_3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
+{
+    
+}
+
+//==============================================================================
+void _3BandMultiEffectorAudioProcessorEditor::paint(juce::Graphics& g)
+{
+    using namespace juce;
+    g.fillAll (Colour::fromRGB(34, 40, 49));
 }
 
 void _3BandMultiEffectorAudioProcessorEditor::resized()
@@ -112,6 +162,8 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
     auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    
+    responseCurveComponent.setBounds(responseArea);
     
     auto lowCutArea = bounds.removeFromLeft(bounds.getWidth() * 0.33);
     auto highCutArea = bounds.removeFromRight(bounds.getWidth() * 0.5);
@@ -129,18 +181,6 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     peakQualitySlider.setBounds(bounds);
 }
 
-void _3BandMultiEffectorAudioProcessorEditor::parameterValueChanged(int parameterIndex, float newValue)
-{
-    parametersChanged.set(true);
-}
-
-void _3BandMultiEffectorAudioProcessorEditor::timerCallback()
-{
-    if (parametersChanged.compareAndSetBool(false, true)) {
-        
-    }
-}
-
 std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps()
 {
     return
@@ -151,6 +191,7 @@ std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps(
         &lowCutFreqSlider,
         &highCutFreqSlider,
         &lowCutSlopeSlider,
-        &highCutSlopeSlider
+        &highCutSlopeSlider,
+        &responseCurveComponent
     };
 }

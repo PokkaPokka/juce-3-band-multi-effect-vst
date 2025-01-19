@@ -25,14 +25,33 @@ struct CustomHorizontalSlider: juce::Slider
     CustomHorizontalSlider(): juce::Slider(juce::Slider::SliderStyle::LinearHorizontal,
                                            juce::Slider::TextEntryBoxPosition::TextBoxBelow)
     {
-        
+
     };
 };
+
+struct ResponseCurveComponent: juce::Component, juce::AudioProcessorParameter::Listener, juce::Timer
+{
+    ResponseCurveComponent(_3BandMultiEffectorAudioProcessor&);
+    ~ResponseCurveComponent();
+    void parameterValueChanged(int parameterIndex, float newValue) override;
+    void parameterGestureChanged(int parameterIndex, bool gestureIsStarting) override { }
+    void timerCallback() override;
+
+    void paint(juce::Graphics& g) override;
+    
+private:
+    // This reference is provided as a quick way for your editor to
+    // access the processor object that created it.
+    _3BandMultiEffectorAudioProcessor& audioProcessor;
+    juce::Atomic<bool> parametersChanged{false};
+    MonoChain monoChain;
+};
+
+
 //==============================================================================
 /**
 */
-class _3BandMultiEffectorAudioProcessorEditor  : public juce::AudioProcessorEditor,
-juce::AudioProcessorParameter::Listener, juce::Timer
+class _3BandMultiEffectorAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
     _3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor&);
@@ -42,16 +61,10 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     
-    void parameterValueChanged(int parameterIndex, float newValue) override;
-    void parameterGestureChanged(int parameterIndex, bool gestureIsStarting) override{};
-    void timerCallback() override;
-
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     _3BandMultiEffectorAudioProcessor& audioProcessor;
-
-    juce::Atomic<bool> parametersChanged{false};
     
     CustomRotarySlider peakFreqSlider,
                         peakGainSlider,
@@ -60,6 +73,8 @@ private:
                         highCutFreqSlider;
 
     CustomHorizontalSlider lowCutSlopeSlider, highCutSlopeSlider;
+    
+    ResponseCurveComponent responseCurveComponent;
     
     // Alias to make this extra name looks cleaner
     using APVTS = juce::AudioProcessorValueTreeState;
@@ -74,8 +89,6 @@ private:
                 highCutSlopeSliderAttachment;
     
     std::vector<juce::Component*> getComps();
-    
-    MonoChain monoChain;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessorEditor)
 };

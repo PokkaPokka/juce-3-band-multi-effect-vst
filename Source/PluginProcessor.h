@@ -53,6 +53,65 @@ void updateCoefficients(Coefficients& old, const Coefficients& replacements);
 
 Coefficients makePeakFilter(const ChainSettings& chainSettings, double sampleRate);
 
+// Updates the coefficients for a specific stage in the filter chain.
+// 'Index' determines which filter stage (e.g., stage 0, 1, 2, or 3) to update.
+// 'chain' is the filter chain containing the filter stages.
+// 'cutCoefficients' is an array of coefficient pointers, each corresponding to a filter stage.
+template<int Index, typename ChainType, typename CoefficientType>
+void update(ChainType& chain, const CoefficientType& cutCoefficients)
+{
+    // Replace the current coefficients of the filter stage with the new coefficients.
+    // This adjusts the filter's behavior (e.g., frequency, slope) for that stage.
+    updateCoefficients(chain.template get<Index>().coefficients, cutCoefficients[Index]);
+    // Enable the filter stage by setting its 'bypassed' state to 'false'.
+    // This ensures the updated filter stage becomes active in the audio processing chain.
+    chain.template setBypassed<Index>(false);
+}
+
+template<typename ChainType, typename CoefficientType>
+void updateCutFilter(ChainType& lowCut, const CoefficientType& cutCoefficient, const Slope& lowCutSlope)
+{
+    // Reset all filter stages to bypassed
+    // This ensures that no stages are active unless explicitly set below.
+    lowCut.template setBypassed<0>(true);
+    lowCut.template setBypassed<1>(true);
+    lowCut.template setBypassed<2>(true);
+    lowCut.template setBypassed<3>(true);
+    
+    switch(lowCutSlope)
+    {
+        case Slope_48:
+        {
+            update<3>(lowCut, cutCoefficient);
+            break;
+        }
+        case Slope_36:
+        {
+            update<2>(lowCut, cutCoefficient);
+            break;
+        }
+        case Slope_24:
+        {
+            update<1>(lowCut, cutCoefficient);
+            break;
+        }
+        case Slope_12:
+        {
+            update<0>(lowCut, cutCoefficient);
+            break;
+        }
+    }
+}
+
+inline auto makeLowCutFilter(const ChainSettings& chainSettings, double sampleRate)
+{
+    return juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(chainSettings.lowCutFreq, sampleRate, 2 * (chainSettings.lowCutSlope + 1));
+}
+
+inline auto makeHighCutFilter(const ChainSettings& chainSettings, double sampleRate)
+{
+    return juce::dsp::FilterDesign<float>::designIIRLowpassHighOrderButterworthMethod(chainSettings.highCutFreq, sampleRate, 2 * (chainSettings.highCutSlope + 1));
+}
 //==============================================================================
 /**
 */
@@ -113,56 +172,6 @@ private:
     // Update the peak filter coefficients (frequency, gain, and quality factor)
     // based on user settings stored in ChainSettings
     void updatePeakFilter(const ChainSettings& chainSettings);
-    
-    // Updates the coefficients for a specific stage in the filter chain.
-    // 'Index' determines which filter stage (e.g., stage 0, 1, 2, or 3) to update.
-    // 'chain' is the filter chain containing the filter stages.
-    // 'cutCoefficients' is an array of coefficient pointers, each corresponding to a filter stage.
-    template<int Index, typename ChainType, typename CoefficientType>
-    void update(ChainType& chain, const CoefficientType& cutCoefficients)
-    {
-        // Replace the current coefficients of the filter stage with the new coefficients.
-        // This adjusts the filter's behavior (e.g., frequency, slope) for that stage.
-        updateCoefficients(chain.template get<Index>().coefficients, cutCoefficients[Index]);
-        // Enable the filter stage by setting its 'bypassed' state to 'false'.
-        // This ensures the updated filter stage becomes active in the audio processing chain.
-        chain.template setBypassed<Index>(false);
-    }
-    
-    template<typename ChainType, typename CoefficientType>
-    void updateCutFilter(ChainType& lowCut, const CoefficientType& cutCoefficient, const Slope& lowCutSlope)
-    {
-        // Reset all filter stages to bypassed
-        // This ensures that no stages are active unless explicitly set below.
-        lowCut.template setBypassed<0>(true);
-        lowCut.template setBypassed<1>(true);
-        lowCut.template setBypassed<2>(true);
-        lowCut.template setBypassed<3>(true);
-        
-        switch(lowCutSlope)
-        {
-            case Slope_48:
-            {
-                update<3>(lowCut, cutCoefficient);
-                break;
-            }
-            case Slope_36:
-            {
-                update<2>(lowCut, cutCoefficient);
-                break;
-            }
-            case Slope_24:
-            {
-                update<1>(lowCut, cutCoefficient);
-                break;
-            }
-            case Slope_12:
-            {
-                update<0>(lowCut, cutCoefficient);
-                break;
-            }
-        }
-    }
     
     void updateLowCutFilters(const ChainSettings& chainSettings);
     void updateHighCutFilters(const ChainSettings& chainSettings);
