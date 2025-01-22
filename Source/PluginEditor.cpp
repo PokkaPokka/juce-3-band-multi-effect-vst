@@ -13,10 +13,10 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
 {
     using namespace juce;
     auto bounds = Rectangle<float>(x, y, width, height);
-    g.setColour(Colour(49, 54, 63));
+    g.setColour(Colour(240, 240, 215));
     g.fillEllipse(bounds);
     
-    g.setColour(Colour(238, 238, 238));
+    g.setColour(Colour(170, 185, 154));
     g.drawEllipse(bounds, 1.f);
     
     if (auto* rswl = dynamic_cast<RotarySliderWithLabels*>(&slider))
@@ -25,10 +25,10 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         Path p;
         
         Rectangle<float> r;
-        r.setLeft(center.getX() - 2);
-        r.setRight(center.getX() + 2);
+        r.setLeft(center.getX() - 1);
+        r.setRight(center.getX() + 1);
         r.setTop(bounds.getY());
-        r.setBottom(center.getY() - rswl->getTextHeight() * 1.5);
+        r.setBottom(center.getY());
         
         p.addRoundedRectangle(r, 2);
 
@@ -39,16 +39,17 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         
         g.fillPath(p);
         
-        g.setFont(rswl->getTextHeight());
+        g.setFont(rswl->getTextHeight() + 2);
         auto text = rswl->getDisplayString();
-        auto strWidth = g.getCurrentFont().getStringWidth(text);
+        auto strWidth = g.getCurrentFont().getStringWidth(text) + 2;
         
         r.setSize(strWidth + 4, rswl->getTextHeight() + 2);
-        r.setCentre(bounds.getCentre());
-        g.setColour(Colour::fromRGB(34, 40, 49));
+        r.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() + 2);
+        
+        g.setColour(Colour(208, 221, 208));
         g.fillRect(r);
         
-        g.setColour(Colour(238, 238, 238));
+        g.setColour(Colour(114, 125, 115));
         g.drawFittedText(text, r.toNearestInt(), juce::Justification::centred, 1);
     }
 }
@@ -81,14 +82,24 @@ juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
     juce::Rectangle<int> r;
     r.setSize(size, size);
     r.setCentre(bounds.getCentreX(), 0);
-    r.setY(2);
+    r.setY(27);
     
     return r;
 }
 
 juce::String RotarySliderWithLabels::getDisplayString() const
 {
-    return juce::String(getValue());
+    juce::String str;
+    
+    if (auto* choiceParam = dynamic_cast<juce::AudioParameterChoice*>(param)) {
+        return choiceParam->getCurrentChoiceName();
+    } else {
+        str << getValue();
+        if (suffix.isNotEmpty()) {
+            str << " " << suffix;
+        }
+        return str;
+    }
 }
 
 //==============================================================================
@@ -99,6 +110,7 @@ ResponseCurveComponent::ResponseCurveComponent(_3BandMultiEffectorAudioProcessor
         param->addListener(this);
     }
     
+    parametersChanged.set(true);
     startTimerHz(60);
 }
 
@@ -136,7 +148,7 @@ void ResponseCurveComponent::paint (juce::Graphics& g)
 {
     using namespace juce;
     // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (Colour::fromRGB(34, 40, 49));
+    g.fillAll(Colour(114, 125, 115).darker());
     
     auto bounds = getLocalBounds();
     auto responseArea = bounds;
@@ -197,10 +209,13 @@ void ResponseCurveComponent::paint (juce::Graphics& g)
         responseCurve.lineTo(responseArea.getX() + i, map((mags[i])));
     }
     
-    g.setColour(Colour::fromRGB(49, 54, 63));
+    g.setColour(Colour(114, 125, 115));
     g.drawRoundedRectangle(responseArea.toFloat(), 4.f, 1.f);
     
-    g.setColour(Colour::fromRGB(238, 238, 238));
+    DropShadow shadow(Colour(114, 125, 115), 28, Point<int>(0, 0));
+    shadow.drawForRectangle(g, responseArea);
+    
+    g.setColour(Colour(240, 240, 215));
     g.strokePath(responseCurve, PathStrokeType(2.f));
 }
 
@@ -208,13 +223,13 @@ void ResponseCurveComponent::paint (juce::Graphics& g)
 _3BandMultiEffectorAudioProcessorEditor::
 _3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor& p)
 : AudioProcessorEditor (&p), audioProcessor (p),
-peakFreqSlider(*audioProcessor.apvts.getParameter("Peak Freq"), "Hz"),
+peakFreqSlider(*audioProcessor.apvts.getParameter("Peak Frequency"), "Hz"),
 peakGainSlider(*audioProcessor.apvts.getParameter("Peak Gain"), "dB"),
 peakQualitySlider(*audioProcessor.apvts.getParameter("Peak Quality"), ""),
-lowCutFreqSlider(*audioProcessor.apvts.getParameter("LowCut Freq"), "Hz"),
-highCutFreqSlider(*audioProcessor.apvts.getParameter("HighCut Freq"), "Hz"),
-lowCutSlopeSlider(*audioProcessor.apvts.getParameter("LowCut Slope"), "dB/Oct"),
-highCutSlopeSlider(*audioProcessor.apvts.getParameter("LowCut Slope"), "dB/Oct"),
+lowCutFreqSlider(*audioProcessor.apvts.getParameter("Low-Cut Frequency"), "Hz"),
+highCutFreqSlider(*audioProcessor.apvts.getParameter("High-Cut Frequency"), "Hz"),
+lowCutSlopeSlider(*audioProcessor.apvts.getParameter("Low-Cut Slope"), "dB/Oct"),
+highCutSlopeSlider(*audioProcessor.apvts.getParameter("High-Cut Slope"), "dB/Oct"),
 
 responseCurveComponent(audioProcessor),
 peakFreqSliderAttachment(audioProcessor.apvts, "Peak Frequency", peakFreqSlider),
@@ -244,7 +259,7 @@ _3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEdito
 void _3BandMultiEffectorAudioProcessorEditor::paint(juce::Graphics& g)
 {
     using namespace juce;
-    g.fillAll (Colour::fromRGB(34, 40, 49));
+    g.fillAll (Colour(208, 221, 208));
 }
 
 void _3BandMultiEffectorAudioProcessorEditor::resized()

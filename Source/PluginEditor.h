@@ -3,6 +3,11 @@
 
     This file contains the basic framework code for a JUCE plugin editor.
     Responsible for the visual element of the plugin.
+ 
+     Dark Green: (114, 125, 115)
+     Light Green: (170, 185, 154)
+     Light Blue: (208, 221, 208)
+     Creamy White: (240, 240, 215)
 
   ==============================================================================
 */
@@ -29,6 +34,7 @@ struct RotarySliderWithLabels: juce::Slider
         suffix(unitSuffix)
     {
         setLookAndFeel(&lnf);
+        jassert(param != nullptr);
     };
     
     ~RotarySliderWithLabels()
