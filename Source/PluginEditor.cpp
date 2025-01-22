@@ -13,6 +13,7 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
 {
     using namespace juce;
     auto bounds = Rectangle<float>(x, y, width, height);
+    
     g.setColour(Colour(240, 240, 215));
     g.fillEllipse(bounds);
     
@@ -22,6 +23,24 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
     if (auto* rswl = dynamic_cast<RotarySliderWithLabels*>(&slider))
     {
         auto center = bounds.getCentre();
+        auto angle = jmap(sliderPosProportional, 0.0f, 1.0f, rotaryStartAngle, rotaryEndAngle);
+        
+        Path valueArc;
+        Path minMaxArc;
+        Rectangle<float> outerBounds = bounds.reduced(-4.0f); // Slightly larger than the slider
+        
+        minMaxArc.addCentredArc(center.x, center.y, outerBounds.getWidth() * 0.485f, outerBounds.getHeight() * 0.485f,
+                               0.0f, degreesToRadians(-135.f), degreesToRadians(180.f - 45.f), true);
+        
+        valueArc.addCentredArc(center.x, center.y, outerBounds.getWidth() * 0.485f, outerBounds.getHeight() * 0.485f,
+                               0.0f, rotaryStartAngle, angle, true);
+        
+        g.setColour(Colour(170, 185, 154).brighter());
+        g.strokePath(minMaxArc, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::butt));
+        
+        g.setColour(Colour(170, 185, 154));
+        g.strokePath(valueArc, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::butt));
+        
         Path p;
         
         Rectangle<float> r;
@@ -43,8 +62,8 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         auto text = rswl->getDisplayString();
         auto strWidth = g.getCurrentFont().getStringWidth(text) + 2;
         
-        r.setSize(strWidth + 4, rswl->getTextHeight() + 2);
-        r.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() + 2);
+        r.setSize(strWidth + 4, rswl->getTextHeight() + 1);
+        r.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() + 1);
         
         g.setColour(Colour(208, 221, 208));
         g.fillRect(r);
@@ -65,18 +84,42 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
     auto range = getRange();
     auto sliderBounds = getSliderBounds();
     
-    g.setColour(Colours::red);
-    g.drawRect(getLocalBounds());
-    g.setColour(Colours::yellow);
-    g.drawRect(sliderBounds);
-    
+//    g.setColour(Colours::red);
+//    g.drawRect(getLocalBounds());
+//    g.setColour(Colours::yellow);
+//    g.drawRect(sliderBounds);
+//    
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(), sliderBounds.getWidth(), sliderBounds.getHeight(), jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0), startAng, endAng, *this);
+    
+    auto center = sliderBounds.toFloat().getCentre();
+    auto radius = sliderBounds.getWidth() * 0.5;
+    
+    g.setColour(Colour(170, 185, 154));
+    g.setFont(getTextHeight() - 1);
+    
+    auto numChoices = labels.size();
+    for (int i = 0; i < numChoices; ++i) {
+        auto pos = labels[i].pos;
+        jassert(0.f <= pos);
+        jassert(pos <= 1.f);
+        
+        auto ang = jmap(pos, 0.0f, 1.0f, startAng, endAng);
+        auto centerPoint = center.getPointOnCircumference(radius + getTextHeight() * 0.5f + 1, ang);
+        
+        Rectangle<float> r;
+        auto str = labels[i].label;
+        r.setSize(g.getCurrentFont().getStringWidth(str), getTextHeight());
+        r.setCentre(centerPoint);
+        r.setY(r.getY() + getTextHeight() - 2);
+        
+        g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);
+    }
 }
 
 juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
 {
     auto bounds = getLocalBounds();
-    auto size = juce::jmin(bounds.getWidth(), bounds.getHeight());
+    auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) - 15;
     
     size -= getTextHeight() * 2;
     juce::Rectangle<int> r;
@@ -240,6 +283,34 @@ highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutF
 lowCutSlopeSliderAttachment(audioProcessor.apvts,"Low-Cut Slope", lowCutSlopeSlider),
 highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider)
 {
+    // Labels for Peak Frequency Slider
+    peakFreqSlider.labels.add({0.f, "20"});
+    peakFreqSlider.labels.add({1.f, "20k"});
+
+    // Labels for Peak Gain Slider
+    peakGainSlider.labels.add({0.f, "-24"});
+    peakGainSlider.labels.add({1.f, "24"});
+
+    // Labels for Peak Quality Slider
+    peakQualitySlider.labels.add({0.f, "0.1"});
+    peakQualitySlider.labels.add({1.f, "10"});
+
+    // Labels for Low-Cut Frequency Slider
+    lowCutFreqSlider.labels.add({0.f, "20"});
+    lowCutFreqSlider.labels.add({1.f, "20k"});
+
+    // Labels for High-Cut Frequency Slider
+    highCutFreqSlider.labels.add({0.f, "20"});
+    highCutFreqSlider.labels.add({1.f, "20k"});
+
+    // Labels for Low-Cut Slope Slider
+    lowCutSlopeSlider.labels.add({0.f, "12"});
+    lowCutSlopeSlider.labels.add({1.f, "48"});
+
+    // Labels for High-Cut Slope Slider
+    highCutSlopeSlider.labels.add({0.f, "12"});
+    highCutSlopeSlider.labels.add({1.f, "48"});
+    
     for (auto* comp: getComps())
     {
         addAndMakeVisible(comp);
