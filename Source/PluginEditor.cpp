@@ -58,7 +58,11 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         
         g.fillPath(p);
         
-        g.setFont(rswl->getTextHeight() + 2);
+        if (rswl->param != nullptr && (rswl->param->getParameterID() == "Peak Frequency" || rswl->param->getParameterID() == "Peak Gain" || rswl->param->getParameterID() == "Peak Quality")) {
+            g.setFont(rswl->getTextHeight());
+        } else {
+            g.setFont(rswl->getTextHeight() + 1);
+        }
         auto text = rswl->getDisplayString();
         auto strWidth = g.getCurrentFont().getStringWidth(text) + 2;
         
@@ -88,44 +92,54 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
 //    g.drawRect(getLocalBounds());
 //    g.setColour(Colours::yellow);
 //    g.drawRect(sliderBounds);
-//    
+   
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(), sliderBounds.getWidth(), sliderBounds.getHeight(), jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0), startAng, endAng, *this);
     
     auto center = sliderBounds.toFloat().getCentre();
     auto radius = sliderBounds.getWidth() * 0.5;
     
     g.setColour(Colour(170, 185, 154));
-    g.setFont(getTextHeight() - 1);
     
     auto numChoices = labels.size();
     for (int i = 0; i < numChoices; ++i) {
+        g.setFont(param != nullptr && (param->getParameterID() == "Peak Frequency" ||
+                                       param->getParameterID() == "Peak Gain" ||
+                                       param->getParameterID() == "Peak Quality")
+                      ? getTextHeight() - 2
+                      : getTextHeight() - 1);
+
         auto pos = labels[i].pos;
         jassert(0.f <= pos);
         jassert(pos <= 1.f);
-        
+
         auto ang = jmap(pos, 0.0f, 1.0f, startAng, endAng);
         auto centerPoint = center.getPointOnCircumference(radius + getTextHeight() * 0.5f + 1, ang);
-        
+
         Rectangle<float> r;
         auto str = labels[i].label;
+
         r.setSize(g.getCurrentFont().getStringWidth(str), getTextHeight());
         r.setCentre(centerPoint);
-        r.setY(r.getY() + getTextHeight() - 2);
-        
-        g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);
-    }
+        r.setY(r.getY() + getTextHeight() - (param != nullptr &&
+                                              (param->getParameterID() == "Peak Frequency" ||
+                                               param->getParameterID() == "Peak Gain" ||
+                                               param->getParameterID() == "Peak Quality")
+                                              ? 7
+                                              : 3));
+
+        g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);    }
 }
 
 juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
 {
     auto bounds = getLocalBounds();
-    auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) - 15;
+    auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) - 35;
     
     size -= getTextHeight() * 2;
     juce::Rectangle<int> r;
     r.setSize(size, size);
     r.setCentre(bounds.getCentreX(), 0);
-    r.setY(27);
+    r.setY(48);
     
     return r;
 }
@@ -153,7 +167,7 @@ ResponseCurveComponent::ResponseCurveComponent(_3BandMultiEffectorAudioProcessor
         param->addListener(this);
     }
     
-    parametersChanged.set(true);
+    updateChain();
     startTimerHz(60);
 }
 
@@ -173,18 +187,22 @@ void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float new
 void ResponseCurveComponent::timerCallback()
 {
     if (parametersChanged.compareAndSetBool(false, true)) {
-        auto chainSettings = getChainSettings(audioProcessor.apvts);
-        auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
-        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
-        
-        auto lowCutCoefficients = makeLowCutFilter(chainSettings, audioProcessor.getSampleRate());
-        auto highCutCoefficients = makeHighCutFilter(chainSettings, audioProcessor.getSampleRate());
-        
-        updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
-        updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
-        
+        updateChain();
         repaint();
     }
+}
+
+void ResponseCurveComponent::updateChain()
+{
+    auto chainSettings = getChainSettings(audioProcessor.apvts);
+    auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
+    updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+    
+    auto lowCutCoefficients = makeLowCutFilter(chainSettings, audioProcessor.getSampleRate());
+    auto highCutCoefficients = makeHighCutFilter(chainSettings, audioProcessor.getSampleRate());
+    
+    updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
+    updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
 }
 
 void ResponseCurveComponent::paint (juce::Graphics& g)
@@ -318,7 +336,7 @@ highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlop
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (600, 400);
+    setSize (500, 450);
 }
 
 _3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
@@ -338,7 +356,8 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    float hRatio = 28 / 100.f;
+    auto responseArea = bounds.removeFromTop(bounds.getHeight() * hRatio);
     
     responseCurveComponent.setBounds(responseArea);
     

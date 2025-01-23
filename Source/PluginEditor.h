@@ -54,10 +54,11 @@ struct RotarySliderWithLabels: juce::Slider
     juce::Rectangle<int> getSliderBounds() const;
     int getTextHeight() const {return 14;}
     juce::String getDisplayString() const;
+    
+    juce::RangedAudioParameter* param;
 private:
     LookAndFeel lnf;
     
-    juce::RangedAudioParameter* param;
     juce::String suffix;
 };
 
@@ -77,6 +78,7 @@ private:
     _3BandMultiEffectorAudioProcessor& audioProcessor;
     juce::Atomic<bool> parametersChanged{false};
     MonoChain monoChain;
+    void updateChain();
 };
 
 
