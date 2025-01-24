@@ -71,7 +71,7 @@ struct ResponseCurveComponent: juce::Component, juce::AudioProcessorParameter::L
     void timerCallback() override;
 
     void paint(juce::Graphics& g) override;
-    
+    void resized() override;
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
@@ -79,6 +79,8 @@ private:
     juce::Atomic<bool> parametersChanged{false};
     MonoChain monoChain;
     void updateChain();
+    juce::Image background;
+    juce::Rectangle<int> getRenderArea();
 };
 
 

@@ -30,7 +30,7 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         Rectangle<float> outerBounds = bounds.reduced(-4.0f); // Slightly larger than the slider
         
         minMaxArc.addCentredArc(center.x, center.y, outerBounds.getWidth() * 0.485f, outerBounds.getHeight() * 0.485f,
-                               0.0f, degreesToRadians(-135.f), degreesToRadians(180.f - 45.f), true);
+                                0.0f, degreesToRadians(-135.f), degreesToRadians(180.f - 45.f), true);
         
         valueArc.addCentredArc(center.x, center.y, outerBounds.getWidth() * 0.485f, outerBounds.getHeight() * 0.485f,
                                0.0f, rotaryStartAngle, angle, true);
@@ -50,7 +50,7 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         r.setBottom(center.getY());
         
         p.addRoundedRectangle(r, 2);
-
+        
         jassert(rotaryStartAngle < rotaryEndAngle);
         
         auto sliderAngRad = jmap(sliderPosProportional, 0.f, 1.f, rotaryStartAngle, rotaryEndAngle);
@@ -58,6 +58,26 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         
         g.fillPath(p);
         
+        // Draw parameter ID above the slider
+        if (rswl->param != nullptr) {
+            g.setFont(rswl->getTextHeight() - 1);
+            g.setColour(Colour(114, 125, 115));
+            
+            // Get the parameter ID
+            auto paramName = rswl->param->name;
+            auto textWidth = g.getCurrentFont().getStringWidth(paramName);
+            
+            Rectangle<float> paramNameBounds;
+            paramNameBounds.setSize(textWidth + 6, rswl->getTextHeight() + 2);
+            paramNameBounds.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() * 2); // Position above the slider
+            
+            g.setColour(Colour(208, 221, 208));
+            g.fillRect(paramNameBounds);
+            
+            g.setColour(Colour(170, 185, 154));
+            g.drawFittedText(paramName, paramNameBounds.toNearestInt(), juce::Justification::centred, 1);
+        }
+
         if (rswl->param != nullptr && (rswl->param->getParameterID() == "Peak Frequency" || rswl->param->getParameterID() == "Peak Gain" || rswl->param->getParameterID() == "Peak Quality")) {
             g.setFont(rswl->getTextHeight());
         } else {
@@ -208,11 +228,25 @@ void ResponseCurveComponent::updateChain()
 void ResponseCurveComponent::paint (juce::Graphics& g)
 {
     using namespace juce;
+    
+    auto bounds = getLocalBounds();
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll(Colour(114, 125, 115).darker());
     
-    auto bounds = getLocalBounds();
-    auto responseArea = bounds;
+    // Create an inner shadow effect
+    DropShadow shadow(Colour(114, 125, 115), 28, Point<int>(0, 0)); // Semi-transparent black shadow
+    Image shadowImage(Image::ARGB, bounds.getWidth(), bounds.getHeight(), true);
+    
+    Graphics shadowGraphics(shadowImage);
+    shadowGraphics.setColour(Colours::transparentWhite);
+    shadowGraphics.fillAll();
+    shadow.drawForRectangle(shadowGraphics, bounds); // Draw shadow slightly inside
+    g.setOpacity(0.9f); // Control shadow intensity
+    g.drawImageAt(shadowImage, bounds.getX(), bounds.getY());
+    
+    g.drawImage(background, getLocalBounds().toFloat());
+
+    auto responseArea = getRenderArea();
     auto w = responseArea.getWidth();
     
     auto& lowcut = monoChain.get<ChainPositions::LowCut>();
@@ -270,16 +304,46 @@ void ResponseCurveComponent::paint (juce::Graphics& g)
         responseCurve.lineTo(responseArea.getX() + i, map((mags[i])));
     }
     
-    g.setColour(Colour(114, 125, 115));
-    g.drawRoundedRectangle(responseArea.toFloat(), 4.f, 1.f);
-    
-    DropShadow shadow(Colour(114, 125, 115), 28, Point<int>(0, 0));
-    shadow.drawForRectangle(g, responseArea);
-    
     g.setColour(Colour(240, 240, 215));
     g.strokePath(responseCurve, PathStrokeType(2.f));
 }
 
+void ResponseCurveComponent::resized()
+{
+    using namespace juce;
+    background = Image(Image::PixelFormat::RGB, getWidth(), getHeight(), true);
+    
+    Graphics g(background);
+    Array<float> freqs {
+        20, 30, 40, 50, 100,
+        200, 300, 400, 500, 1000,
+        2000, 3000, 4000, 5000, 10000,
+        20000
+    };
+    
+    g.setColour(Colour(240, 240, 215).darker().withAlpha(0.3f));
+    for (auto f: freqs) {
+        auto normX = mapFromLog10(f, 20.f, 20000.f);
+        g.drawVerticalLine(getWidth() * normX, 0.f, getHeight());
+    }
+    
+    Array<float> gain {
+        -24, -12, 0, 12, 24
+    };
+    
+    for (auto gDb: gain) {
+        auto y = jmap(gDb, -24.f, 24.f, float(getHeight()), 0.f);
+        g.drawHorizontalLine(y, 0, getWidth());
+    }
+}
+
+juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
+{
+    auto bounds = getLocalBounds();
+    
+    bounds.reduce(0, 5);
+    return bounds;
+}
 //==============================================================================
 _3BandMultiEffectorAudioProcessorEditor::
 _3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor& p)

@@ -272,17 +272,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Low-Cut Frequency", 1),
-                                                           "Low-Cut Freqeuncy",
+                                                           "Low-Cut Freq",
                                                            juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
                                                            20.f));
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("High-Cut Frequency", 1),
-                                                           "High-Cut Freqeuncy",
+                                                           "High-Cut Freq",
                                                            juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
                                                            20000.f));
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Peak Frequency", 1),
-                                                           "Peak Freqeuncy",
+                                                           "Peak Freq",
                                                            juce::NormalisableRange<float>(20.f, 20000.f, 1.f, 0.25f),
                                                            750.f));
     
