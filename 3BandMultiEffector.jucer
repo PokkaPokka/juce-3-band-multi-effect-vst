@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="xLGzkz" name="3BandMultiEffector" projectType="audioplug"
-              useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1">
+              useAppConfig="0" addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1"
+              companyName="Pokkariya" companyEmail="wu.yinu@northeastern.edu">
   <MAINGROUP id="DTttCf" name="3BandMultiEffector">
     <GROUP id="{CF89B538-F261-9C7E-D8EA-8618A283AB02}" name="Source">
       <FILE id="XZaryt" name="PluginProcessor.cpp" compile="1" resource="0"

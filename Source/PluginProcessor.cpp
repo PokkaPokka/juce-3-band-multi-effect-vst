@@ -109,6 +109,9 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
     auto chainSettings = getChainSettings(apvts);
 
     updateFilters();
+    
+    leftChannelFifo.prepare(samplesPerBlock);
+    rightChannelFifo.prepare(samplesPerBlock);
 }
 
 void _3BandMultiEffectorAudioProcessor::releaseResources()
@@ -167,6 +170,9 @@ void _3BandMultiEffectorAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     
     leftChain.process(leftContext);
     rightChain.process(rightContext);
+    
+    leftChannelFifo.update(buffer);
+    rightChannelFifo.update(buffer);
 }
 
 //==============================================================================
