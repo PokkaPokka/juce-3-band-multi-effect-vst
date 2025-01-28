@@ -156,7 +156,65 @@ struct ChainSettings
     float peakFreq {0}, peakGainInDeciibels{0}, peakQuality{1.f};
     float lowCutFreq{0}, highCutFreq{0};
     Slope lowCutSlope {Slope::Slope_12}, highCutSlope {Slope::Slope_12};
-    float distortionDrive{0}, outputGainInDecibels{0}, mix{0};
+    float distortionDrive{0}, preGainInDecibels{0}, postGainInDecibels{0}, mix{0};
+};
+
+// A template class for distortion effects
+template <typename FloatType>
+class Distortion
+{
+public:
+    Distortion()
+    {
+        processorChain.template get<preGainIndex>().setGainDecibels(0.0f);
+        processorChain.template get<waveshaperIndex>().functionToUse = [](FloatType x) {
+            return std::tanh(x);
+        };
+        processorChain.template get<postGainIndex>().setGainDecibels(0.0f);
+    }
+
+    void prepare(const juce::dsp::ProcessSpec& spec)
+    {
+        processorChain.prepare(spec);
+    }
+
+    void setPreGain(FloatType gain)
+    {
+        processorChain.template get<preGainIndex>().setGainDecibels(gain);
+    }
+
+    void setPostGain(FloatType gain)
+    {
+        processorChain.template get<postGainIndex>().setGainDecibels(gain);
+    }
+
+    void setWaveshaperFunction()
+    {
+        processorChain.template get<waveshaperIndex>().functionToUse = [] (FloatType x)
+                                                                        {
+                                                                            return juce::jlimit (FloatType (-0.1), FloatType (0.1), x);
+                                                                        };
+    }
+
+    void process(juce::dsp::AudioBlock<FloatType>& block)
+    {
+        juce::dsp::ProcessContextReplacing<FloatType> context(block);
+        processorChain.process(context);
+    }
+
+private:
+    enum
+    {
+        preGainIndex,
+        waveshaperIndex,
+        postGainIndex
+    };
+
+    juce::dsp::ProcessorChain<
+        juce::dsp::Gain<FloatType>,       // Pre-gain
+        juce::dsp::WaveShaper<FloatType>, // Waveshaper
+        juce::dsp::Gain<FloatType>        // Post-gain
+    > processorChain;
 };
 
 // A reference to the TreeState, which manages and connects parameter states in
@@ -303,6 +361,8 @@ public:
     using BlockType = juce::AudioBuffer<float>;
     SingleChannelSampleFifo<BlockType> leftChannelFifo{Channel::Left};
     SingleChannelSampleFifo<BlockType> rightChannelFifo{Channel::Right};
+    
+    Distortion<float> distortionProcessor;
     
 private:
     MonoChain leftChain, rightChain;

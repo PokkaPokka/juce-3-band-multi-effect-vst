@@ -409,7 +409,8 @@ highCutFreqSlider(*audioProcessor.apvts.getParameter("High-Cut Frequency"), "Hz"
 lowCutSlopeSlider(*audioProcessor.apvts.getParameter("Low-Cut Slope"), "dB/Oct"),
 highCutSlopeSlider(*audioProcessor.apvts.getParameter("High-Cut Slope"), "dB/Oct"),
 distortionDriveSlider(*audioProcessor.apvts.getParameter("Drive"), "dB"),
-outputGainSlider(*audioProcessor.apvts.getParameter("Output Gain"), "dB"),
+preGainSlider(*audioProcessor.apvts.getParameter("Pre Gain"), "dB"),
+postGainSlider(*audioProcessor.apvts.getParameter("Post Gain"), "dB"),
 mixSlider(*audioProcessor.apvts.getParameter("Mix"), "%"),
 
 responseCurveComponent(audioProcessor),
@@ -421,7 +422,8 @@ highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutF
 lowCutSlopeSliderAttachment(audioProcessor.apvts,"Low-Cut Slope", lowCutSlopeSlider),
 highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider),
 disortionDriveAttachment(audioProcessor.apvts, "Drive", distortionDriveSlider),
-outputGainAttachment(audioProcessor.apvts, "Output Gain", outputGainSlider),
+preGainAttachment(audioProcessor.apvts, "Pre Gain", preGainSlider),
+postGainAttachment(audioProcessor.apvts, "Post Gain", postGainSlider),
 mixAttachment(audioProcessor.apvts, "Mix", mixSlider)
 
 {
@@ -457,8 +459,11 @@ mixAttachment(audioProcessor.apvts, "Mix", mixSlider)
     distortionDriveSlider.labels.add({0.f, "0"});
     distortionDriveSlider.labels.add({1.f, "50"});
     
-    outputGainSlider.labels.add({0.f, "-40"});
-    outputGainSlider.labels.add({1.f, "20"});
+    preGainSlider.labels.add({0.f, "-40"});
+    preGainSlider.labels.add({1.f, "20"});
+    
+    postGainSlider.labels.add({0.f, "-40"});
+    postGainSlider.labels.add({1.f, "20"});
     
     mixSlider.labels.add({0.f, "0"});
     mixSlider.labels.add({1.f, "100"});
@@ -517,19 +522,17 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.5));
     peakQualitySlider.setBounds(bounds);
 
-    // Position distortion slider below the existing bounds
     auto distortionBounds = getLocalBounds();
-    distortionBounds.setTop(bounds.getBottom()); // Start right below the bounds with a 10px margin
+    distortionBounds.setTop(bounds.getBottom()); // Start right below the bounds
 
-    auto driveArea = distortionBounds.removeFromLeft(distortionBounds.getWidth() * 0.33);
-    // Set the distortion drive slider bounds
-    distortionDriveSlider.setBounds(driveArea);
-    
-    auto outputGainArea = distortionBounds.removeFromLeft(distortionBounds.getWidth() * 0.5);
-    outputGainSlider.setBounds(outputGainArea);
-    
-    auto mixArea = distortionBounds;
-    mixSlider.setBounds(mixArea);
+    // Calculate the width for each slider
+    auto sliderWidth = distortionBounds.getWidth() / 4;
+
+    // Set bounds for each slider
+    preGainSlider.setBounds(distortionBounds.removeFromLeft(sliderWidth));
+    distortionDriveSlider.setBounds(distortionBounds.removeFromLeft(sliderWidth));
+    postGainSlider.setBounds(distortionBounds.removeFromLeft(sliderWidth));
+    mixSlider.setBounds(distortionBounds);
 }
 
 std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps()
@@ -544,7 +547,8 @@ std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps(
         &lowCutSlopeSlider,
         &highCutSlopeSlider,
         &distortionDriveSlider,
-        &outputGainSlider,
+        &preGainSlider,
+        &postGainSlider,
         &mixSlider,
         &responseCurveComponent
     };

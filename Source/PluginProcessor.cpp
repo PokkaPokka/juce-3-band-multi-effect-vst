@@ -110,6 +110,11 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
 
     updateFilters();
     
+    distortionProcessor.prepare(spec);
+    distortionProcessor.setWaveshaperFunction();
+    distortionProcessor.setPreGain(0.0f);
+    distortionProcessor.setPostGain(0.0f);
+    
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
     
@@ -180,6 +185,9 @@ void _3BandMultiEffectorAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     
     leftChain.process(leftContext);
     rightChain.process(rightContext);
+    
+    distortionProcessor.process(leftBlock);
+    distortionProcessor.process(rightBlock);
     
     leftChannelFifo.update(buffer);
     rightChannelFifo.update(buffer);
@@ -336,8 +344,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
                                                            "Drive",
                                                            juce::NormalisableRange<float>(0.f, 50.f, 1.f, 1.f),
                                                            0.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Output Gain", 1),
-                                                           "Output Gain",
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Pre Gain", 1),
+                                                          "Pre Gain",
+                                                          juce::NormalisableRange<float>(-40.f, 20.f, 1.f, 1.f),
+                                                          0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Post Gain", 1),
+                                                           "Post Gain",
                                                            juce::NormalisableRange<float>(-40.f, 20.f, 1.f, 1.f),
                                                            0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Mix", 1),
