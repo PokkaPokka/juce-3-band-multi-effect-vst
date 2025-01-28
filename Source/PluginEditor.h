@@ -218,6 +218,28 @@ private:
     juce::String suffix;
 };
 
+struct PathProducer
+{
+    PathProducer(SingleChannelSampleFifo<_3BandMultiEffectorAudioProcessor::BlockType>& scsf):
+    leftChannelFifo(&scsf)
+    {
+        leftChannelFFTDataGenerator.changeOrder(FFTOrder::order8192);
+        monoBuffer.setSize(1, leftChannelFFTDataGenerator.getFFTSize());
+    }
+    void process(juce::Rectangle<float> fftBounds, double sampleRate);
+    juce::Path getPath() {return leftChannelFFTPath;}
+private:
+    SingleChannelSampleFifo<_3BandMultiEffectorAudioProcessor::BlockType>* leftChannelFifo;
+    
+    juce::AudioBuffer<float> monoBuffer;
+    
+    FFTDataGenerator<std::vector<float>> leftChannelFFTDataGenerator;
+    
+    AnalyzerPathGenerator<juce::Path> pathProducer;
+    
+    juce::Path leftChannelFFTPath;
+};
+
 struct ResponseCurveComponent: juce::Component, juce::AudioProcessorParameter::Listener, juce::Timer
 {
     ResponseCurveComponent(_3BandMultiEffectorAudioProcessor&);
@@ -238,15 +260,7 @@ private:
     juce::Image background;
     juce::Rectangle<int> getRenderArea();
     
-    SingleChannelSampleFifo<_3BandMultiEffectorAudioProcessor::BlockType>* leftChannelFifo;
-    
-    juce::AudioBuffer<float> monoBuffer;
-    
-    FFTDataGenerator<std::vector<float>> leftChannelFFTDataGenerator;
-    
-    AnalyzerPathGenerator<juce::Path> pathProducer;
-    
-    juce::Path leftChannelFFTPath;
+    PathProducer leftPathProducer, rightPathProducer;
 };
 
 //==============================================================================
@@ -273,7 +287,10 @@ private:
                         lowCutFreqSlider,
                         highCutFreqSlider,
                         lowCutSlopeSlider,
-                        highCutSlopeSlider;
+                        highCutSlopeSlider,
+                        distortionDriveSlider,
+                        outputGainSlider,
+                        mixSlider;
     
     ResponseCurveComponent responseCurveComponent;
     
@@ -287,7 +304,10 @@ private:
                 lowCutFreqSliderAttachment,
                 highCutFreqSliderAttachment,
                 lowCutSlopeSliderAttachment,
-                highCutSlopeSliderAttachment;
+                highCutSlopeSliderAttachment,
+                disortionDriveAttachment,
+                outputGainAttachment,
+                mixAttachment;
     
     std::vector<juce::Component*> getComps();
     

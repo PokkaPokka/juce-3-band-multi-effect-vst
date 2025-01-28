@@ -156,6 +156,7 @@ struct ChainSettings
     float peakFreq {0}, peakGainInDeciibels{0}, peakQuality{1.f};
     float lowCutFreq{0}, highCutFreq{0};
     Slope lowCutSlope {Slope::Slope_12}, highCutSlope {Slope::Slope_12};
+    float distortionDrive{0}, outputGainInDecibels{0}, mix{0};
 };
 
 // A reference to the TreeState, which manages and connects parameter states in
@@ -313,6 +314,7 @@ private:
     void updateLowCutFilters(const ChainSettings& chainSettings);
     void updateHighCutFilters(const ChainSettings& chainSettings);
     void updateFilters();
+    juce::dsp::Oscillator<float> osc;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessor)
 };

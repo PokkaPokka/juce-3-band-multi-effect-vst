@@ -112,6 +112,11 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
     
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
+    
+//    osc.initialise([](float x){return std::sin(x);});
+//    spec.numChannels = getTotalNumOutputChannels();
+//    osc.prepare(spec);
+//    osc.setFrequency(2000);
 }
 
 void _3BandMultiEffectorAudioProcessor::releaseResources()
@@ -160,6 +165,11 @@ void _3BandMultiEffectorAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     
     // Create an AudioBlock wrapper around the buffer for processing audio data in a flexible way
     juce::dsp::AudioBlock<float> block(buffer);
+    
+//    buffer.clear();
+//    juce::dsp::ProcessContextReplacing<float> stereoContext(block);
+//    osc.process(stereoContext);
+    
     // Extract the single-channel blocks for the left and right audio channerls from the AudioBlock
     auto leftBlock = block.getSingleChannelBlock(0);
     auto rightBlock = block.getSingleChannelBlock(1);
@@ -221,6 +231,15 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
     settings.peakQuality = apvts.getRawParameterValue("Peak Quality")->load();
     settings.lowCutSlope = static_cast<Slope>(apvts.getRawParameterValue("Low-Cut Slope")->load());
     settings.highCutSlope = static_cast<Slope>(apvts.getRawParameterValue("High-Cut Slope")->load());
+    
+    auto* driveParameter = apvts.getRawParameterValue("Drive");
+    jassert(driveParameter != nullptr); // Ensure the parameter exists
+    if (driveParameter != nullptr)
+        settings.distortionDrive = driveParameter->load();
+    else
+        settings.distortionDrive = 0.0f; // Default to a safe value
+    
+    settings.distortionDrive = apvts.getRawParameterValue("Drive")->load();
     
     return settings;
 }
@@ -299,7 +318,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Peak Quality", 1),
                                                            "Peak Quality",
-                                                           juce::NormalisableRange<float>(0.1f, 10.f, 0.05f, 1.f),
+                                                           juce::NormalisableRange<float>(0.1f, 50.f, 0.05f, 1.f),
                                                            1.f));
     
     juce::StringArray stringArray;
@@ -313,6 +332,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("Low-Cut Slope", 1), "Low-Cut Slope", stringArray, 0));
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("High-Cut Slope", 1), "High-Cut Slope", stringArray, 0));
     
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Drive", 1),
+                                                           "Drive",
+                                                           juce::NormalisableRange<float>(0.f, 50.f, 1.f, 1.f),
+                                                           0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Output Gain", 1),
+                                                           "Output Gain",
+                                                           juce::NormalisableRange<float>(-40.f, 20.f, 1.f, 1.f),
+                                                           0.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Mix", 1),
+                                                           "Mix",
+                                                           juce::NormalisableRange<float>(0.f, 100.f, 1.f, 1.f),
+                                                           50.f));
+                                                           
     return layout;
 }
 

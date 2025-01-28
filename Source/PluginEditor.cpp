@@ -181,15 +181,13 @@ juce::String RotarySliderWithLabels::getDisplayString() const
 
 //==============================================================================
 ResponseCurveComponent::ResponseCurveComponent(_3BandMultiEffectorAudioProcessor& p): audioProcessor(p),
-leftChannelFifo(&audioProcessor.leftChannelFifo)
+leftPathProducer(audioProcessor.leftChannelFifo),
+rightPathProducer(audioProcessor.rightChannelFifo)
 {
     const auto& params = audioProcessor.getParameters();
     for (auto param: params) {
         param->addListener(this);
     }
-    
-    leftChannelFFTDataGenerator.changeOrder(FFTOrder::order2048);
-    monoBuffer.setSize(1, leftChannelFFTDataGenerator.getFFTSize());
     
     updateChain();
     startTimerHz(60);
@@ -208,7 +206,7 @@ void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float new
     parametersChanged.set(true);
 }
 
-void ResponseCurveComponent::timerCallback()
+void PathProducer::process(juce::Rectangle<float> fftBounds, double sampleRate)
 {
     juce::AudioBuffer<float> tempIncomingBuffer;
     
@@ -226,10 +224,9 @@ void ResponseCurveComponent::timerCallback()
             leftChannelFFTDataGenerator.produceFFTDataForRendering(monoBuffer, -48.f);
         }
     }
-    
-    const auto fftBounds = getRenderArea().toFloat();
+
     const auto fftSize = leftChannelFFTDataGenerator.getFFTSize();
-    const auto binWidth = audioProcessor.getSampleRate() / (double)fftSize;
+    const auto binWidth = sampleRate / (double)fftSize;
     
     while (leftChannelFFTDataGenerator.getNumAvailableFFTDataBlocks() > 0) {
         std::vector<float> fftData;
@@ -241,6 +238,16 @@ void ResponseCurveComponent::timerCallback()
     while (pathProducer.getNumPathsAvailable()) {
         pathProducer.getPath(leftChannelFFTPath);
     }
+}
+
+void ResponseCurveComponent::timerCallback()
+{
+    
+    auto fftBounds = getRenderArea().toFloat();
+    auto sampleRate = audioProcessor.getSampleRate();
+    
+    leftPathProducer.process(fftBounds, sampleRate);
+    rightPathProducer.process(fftBounds, sampleRate);
     
     if (parametersChanged.compareAndSetBool(false, true)) {
         updateChain();
@@ -341,8 +348,14 @@ void ResponseCurveComponent::paint (juce::Graphics& g)
         responseCurve.lineTo(responseArea.getX() + i, map((mags[i])));
     }
     
+    auto leftChannelFFTPath = leftPathProducer.getPath();
+    auto rightChannelFFTPath = rightPathProducer.getPath();
+    
     g.setColour(Colour(208, 221, 208).withAlpha(0.7f));
     g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
+    
+    g.setColour(Colour(188, 159, 139).withAlpha(0.7f));
+    g.strokePath(rightChannelFFTPath, PathStrokeType(1.f));
     
     g.setColour(Colour(240, 240, 215));
     g.strokePath(responseCurve, PathStrokeType(2.f));
@@ -395,6 +408,9 @@ lowCutFreqSlider(*audioProcessor.apvts.getParameter("Low-Cut Frequency"), "Hz"),
 highCutFreqSlider(*audioProcessor.apvts.getParameter("High-Cut Frequency"), "Hz"),
 lowCutSlopeSlider(*audioProcessor.apvts.getParameter("Low-Cut Slope"), "dB/Oct"),
 highCutSlopeSlider(*audioProcessor.apvts.getParameter("High-Cut Slope"), "dB/Oct"),
+distortionDriveSlider(*audioProcessor.apvts.getParameter("Drive"), "dB"),
+outputGainSlider(*audioProcessor.apvts.getParameter("Output Gain"), "dB"),
+mixSlider(*audioProcessor.apvts.getParameter("Mix"), "%"),
 
 responseCurveComponent(audioProcessor),
 peakFreqSliderAttachment(audioProcessor.apvts, "Peak Frequency", peakFreqSlider),
@@ -403,7 +419,11 @@ peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySli
 lowCutFreqSliderAttachment(audioProcessor.apvts, "Low-Cut Frequency", lowCutFreqSlider),
 highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutFreqSlider),
 lowCutSlopeSliderAttachment(audioProcessor.apvts,"Low-Cut Slope", lowCutSlopeSlider),
-highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider)
+highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider),
+disortionDriveAttachment(audioProcessor.apvts, "Drive", distortionDriveSlider),
+outputGainAttachment(audioProcessor.apvts, "Output Gain", outputGainSlider),
+mixAttachment(audioProcessor.apvts, "Mix", mixSlider)
+
 {
     // Labels for Peak Frequency Slider
     peakFreqSlider.labels.add({0.f, "20"});
@@ -433,6 +453,16 @@ highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlop
     highCutSlopeSlider.labels.add({0.f, "12"});
     highCutSlopeSlider.labels.add({1.f, "48"});
     
+    //Labels for Distortion Drive Slider
+    distortionDriveSlider.labels.add({0.f, "0"});
+    distortionDriveSlider.labels.add({1.f, "50"});
+    
+    outputGainSlider.labels.add({0.f, "-40"});
+    outputGainSlider.labels.add({1.f, "20"});
+    
+    mixSlider.labels.add({0.f, "0"});
+    mixSlider.labels.add({1.f, "100"});
+    
     for (auto* comp: getComps())
     {
         addAndMakeVisible(comp);
@@ -440,7 +470,7 @@ highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlop
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (500, 450);
+    setSize (500, 600);
 }
 
 _3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
@@ -460,11 +490,17 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
-    float hRatio = 28 / 100.f;
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * hRatio);
+    float hRatio = 20 / 100.f;
     
+    // Reserve the top area for the response curve
+    auto responseArea = bounds.removeFromTop(bounds.getHeight() * hRatio);
     responseCurveComponent.setBounds(responseArea);
     
+    // Reserve some space at the bottom for new sliders
+    const int bottomMargin = bounds.getHeight() * 0.35;
+    bounds.removeFromBottom(bottomMargin);
+    
+    // Layout the low cut and high cut areas
     auto lowCutArea = bounds.removeFromLeft(bounds.getWidth() * 0.33);
     auto highCutArea = bounds.removeFromRight(bounds.getWidth() * 0.5);
     
@@ -476,9 +512,24 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     lowCutSlopeSlider.setTextBoxIsEditable(false);
     highCutSlopeSlider.setTextBoxIsEditable(false);
     
-    peakFreqSlider.setBounds(bounds.removeFromTop(bounds.getHeight () * 0.33));
-    peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight () * 0.5));
+    // Layout the peak controls
+    peakFreqSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.33));
+    peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.5));
     peakQualitySlider.setBounds(bounds);
+
+    // Position distortion slider below the existing bounds
+    auto distortionBounds = getLocalBounds();
+    distortionBounds.setTop(bounds.getBottom()); // Start right below the bounds with a 10px margin
+
+    auto driveArea = distortionBounds.removeFromLeft(distortionBounds.getWidth() * 0.33);
+    // Set the distortion drive slider bounds
+    distortionDriveSlider.setBounds(driveArea);
+    
+    auto outputGainArea = distortionBounds.removeFromLeft(distortionBounds.getWidth() * 0.5);
+    outputGainSlider.setBounds(outputGainArea);
+    
+    auto mixArea = distortionBounds;
+    mixSlider.setBounds(mixArea);
 }
 
 std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps()
@@ -492,6 +543,9 @@ std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps(
         &highCutFreqSlider,
         &lowCutSlopeSlider,
         &highCutSlopeSlider,
+        &distortionDriveSlider,
+        &outputGainSlider,
+        &mixSlider,
         &responseCurveComponent
     };
 }
