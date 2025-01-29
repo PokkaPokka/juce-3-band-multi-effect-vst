@@ -188,12 +188,9 @@ public:
         processorChain.template get<postGainIndex>().setGainDecibels(gain);
     }
 
-    void setWaveshaperFunction()
+    void setWaveshaperFunction(float (*func)(float))
     {
-        processorChain.template get<waveshaperIndex>().functionToUse = [] (FloatType x)
-                                                                        {
-                                                                            return juce::jlimit (FloatType (-0.1), FloatType (0.1), x);
-                                                                        };
+        processorChain.template get<waveshaperIndex>().functionToUse = func;
     }
 
     void process(juce::dsp::AudioBlock<FloatType>& block)

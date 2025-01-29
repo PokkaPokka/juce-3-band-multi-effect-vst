@@ -111,9 +111,6 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
     updateFilters();
     
     distortionProcessor.prepare(spec);
-    distortionProcessor.setWaveshaperFunction();
-    distortionProcessor.setPreGain(0.0f);
-    distortionProcessor.setPostGain(0.0f);
     
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
@@ -186,8 +183,34 @@ void _3BandMultiEffectorAudioProcessor::processBlock (juce::AudioBuffer<float>& 
     leftChain.process(leftContext);
     rightChain.process(rightContext);
     
+    auto preGainValue = apvts.getRawParameterValue("Pre Gain")->load();
+    auto driveValue = apvts.getRawParameterValue("Drive")->load();
+    auto postGainValue = apvts.getRawParameterValue("Post Gain")->load();
+    
+    buffer.applyGain(juce::Decibels::decibelsToGain(preGainValue));
+    
+    // Apply drive gain before waveshaper
+    for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+    {
+        auto* channelData = buffer.getWritePointer(channel);
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        {
+            if (driveValue > 0.f) {
+                channelData[sample] *= driveValue;
+            }q
+        }
+    }
+
+    // Use a stateless function for waveshaper
+    distortionProcessor.setWaveshaperFunction([](float x)
+    {
+        return std::tanh(x);
+    });
+    
     distortionProcessor.process(leftBlock);
     distortionProcessor.process(rightBlock);
+    
+    buffer.applyGain(juce::Decibels::decibelsToGain(postGainValue));
     
     leftChannelFifo.update(buffer);
     rightChannelFifo.update(buffer);
