@@ -110,6 +110,8 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
 
     updateFilters();
     
+    dryWetMixer.prepare({ sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getTotalNumOutputChannels() });
+    
     distortionProcessor.prepare(spec);
     
     leftChannelFifo.prepare(samplesPerBlock);
@@ -153,65 +155,69 @@ bool _3BandMultiEffectorAudioProcessor::isBusesLayoutSupported (const BusesLayou
 }
 #endif
 
-void _3BandMultiEffectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
+    
+    auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // Avoid people getting screaming feedback
+    // Avoid feedback by clearing unused output channels
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+        buffer.clear(i, 0, buffer.getNumSamples());
     
+    // Update filters and parameters
     updateFilters();
-    
-    // Create an AudioBlock wrapper around the buffer for processing audio data in a flexible way
-    juce::dsp::AudioBlock<float> block(buffer);
-    
-//    buffer.clear();
-//    juce::dsp::ProcessContextReplacing<float> stereoContext(block);
-//    osc.process(stereoContext);
-    
-    // Extract the single-channel blocks for the left and right audio channerls from the AudioBlock
-    auto leftBlock = block.getSingleChannelBlock(0);
-    auto rightBlock = block.getSingleChannelBlock(1);
-    
-    // Create ProcessContextReplacing objects for both channels, representing the audio data to be processed
-    juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
-    juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
-    
-    leftChain.process(leftContext);
-    rightChain.process(rightContext);
     
     auto preGainValue = apvts.getRawParameterValue("Pre Gain")->load();
     auto driveValue = apvts.getRawParameterValue("Drive")->load();
     auto postGainValue = apvts.getRawParameterValue("Post Gain")->load();
+    auto mix = apvts.getRawParameterValue("Mix")->load() * 0.01f; // Convert mix to a proportion (0.0 to 1.0)
+
+    // Set the mix ratio for the DryWetMixer
+    dryWetMixer.setWetMixProportion(mix);
+
+    dryWetMixer.pushDrySamples(buffer); // Push the dry (unprocessed) signal
     
-    buffer.applyGain(juce::Decibels::decibelsToGain(preGainValue));
-    
+    // Create a copy of the input buffer for the wet signal
+    juce::AudioBuffer<float> wetBuffer(buffer);
+
+    // Apply pre-gain to the wet buffer
+    wetBuffer.applyGain(juce::Decibels::decibelsToGain(preGainValue));
+
     // Apply drive gain before waveshaper
-    for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+    for (int channel = 0; channel < wetBuffer.getNumChannels(); ++channel)
     {
-        auto* channelData = buffer.getWritePointer(channel);
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+        auto* channelData = wetBuffer.getWritePointer(channel);
+        for (int sample = 0; sample < wetBuffer.getNumSamples(); ++sample)
         {
             if (driveValue > 0.f) {
                 channelData[sample] *= driveValue;
-            }q
+            }
         }
     }
 
-    // Use a stateless function for waveshaper
+    // Apply waveshaping distortion
     distortionProcessor.setWaveshaperFunction([](float x)
     {
         return std::tanh(x);
     });
-    
-    distortionProcessor.process(leftBlock);
-    distortionProcessor.process(rightBlock);
-    
-    buffer.applyGain(juce::Decibels::decibelsToGain(postGainValue));
-    
+
+    juce::dsp::AudioBlock<float> wetBlock(wetBuffer);
+    distortionProcessor.process(wetBlock);
+
+    // Apply post-gain to the wet buffer
+    wetBuffer.applyGain(juce::Decibels::decibelsToGain(postGainValue));
+
+    dryWetMixer.mixWetSamples(wetBuffer); // Mix in the wet (processed) signal
+
+    // Copy the mixed result back to the main buffer
+    for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+    {
+        buffer.copyFrom(channel, 0, wetBuffer, channel, 0, buffer.getNumSamples());
+    }
+
+    // Update FIFO buffers for visualization
     leftChannelFifo.update(buffer);
     rightChannelFifo.update(buffer);
 }
