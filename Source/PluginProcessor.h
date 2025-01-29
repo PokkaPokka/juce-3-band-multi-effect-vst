@@ -371,6 +371,7 @@ private:
     void updateLowCutFilters(const ChainSettings& chainSettings);
     void updateHighCutFilters(const ChainSettings& chainSettings);
     void updateFilters();
+    void updateDistortion(juce::AudioBuffer<float>&);
     juce::dsp::Oscillator<float> osc;
     juce::dsp::DryWetMixer<float> dryWetMixer;
     //==============================================================================
