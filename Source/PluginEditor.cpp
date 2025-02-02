@@ -468,6 +468,12 @@ mixAttachment(audioProcessor.apvts, "Mix", mixSlider)
     mixSlider.labels.add({0.f, "0"});
     mixSlider.labels.add({1.f, "100"});
     
+    distortionTypeComboBox.addItem("Soft Clipping", 1);
+    distortionTypeComboBox.addItem("Hard Clipping", 2);
+    
+    distortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
+    addAndMakeVisible(distortionTypeComboBox);
+    
     for (auto* comp: getComps())
     {
         addAndMakeVisible(comp);
@@ -475,12 +481,12 @@ mixAttachment(audioProcessor.apvts, "Mix", mixSlider)
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (500, 600);
+    setSize (500, 650);
 }
 
 _3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
 {
-    
+    distortionTypeComboBox.setLookAndFeel(nullptr);
 }
 
 //==============================================================================
@@ -502,7 +508,7 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     responseCurveComponent.setBounds(responseArea);
     
     // Reserve some space at the bottom for new sliders
-    const int bottomMargin = bounds.getHeight() * 0.35;
+    const int bottomMargin = bounds.getHeight() * 0.4;
     bounds.removeFromBottom(bottomMargin);
     
     // Layout the low cut and high cut areas
@@ -522,8 +528,22 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.5));
     peakQualitySlider.setBounds(bounds);
 
+    // Define height for the ComboBox
+    int comboBoxHeight = 20;  // Adjust as needed
+
+    // Get the distortion bounds and calculate width
     auto distortionBounds = getLocalBounds();
-    distortionBounds.setTop(bounds.getBottom()); // Start right below the bounds
+    distortionBounds.setTop(bounds.getBottom() + comboBoxHeight);  // Start below the bounds
+
+    // Define the width for the ComboBox (centered)
+    auto comboBoxWidth = distortionBounds.getWidth() / 3; // Half the width
+    auto comboBoxX = distortionBounds.getCentreX() - (comboBoxWidth / 2); // Center it
+    
+    // Set bounds for the ComboBox
+    distortionTypeComboBox.setBounds(comboBoxX, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
+
+    // Adjust the distortionBounds to move down after the ComboBox
+    distortionBounds.setY(distortionBounds.getY() + comboBoxHeight);
 
     // Calculate the width for each slider
     auto sliderWidth = distortionBounds.getWidth() / 4;

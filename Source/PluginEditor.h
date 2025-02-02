@@ -173,6 +173,23 @@ private:
 
 //==============================================================================
 
+struct CustomLookAndFeelComboBox: juce::LookAndFeel_V4
+{
+    CustomLookAndFeelComboBox()
+    {
+        /*
+        Dark Green: (114, 125, 115)
+        Light Green: (170, 185, 154)
+        Light Blue: (208, 221, 208)
+        Creamy White: (240, 240, 215)
+         */
+        setColour(juce::ComboBox::backgroundColourId, juce::Colour(240, 240, 215));
+        setColour(juce::ComboBox::outlineColourId, juce::Colour(170, 185, 154));
+        setColour(juce::ComboBox::arrowColourId, juce::Colour(170, 185, 154));
+        setColour(juce::ComboBox::textColourId, juce::Colour(170, 185, 154));
+    }
+};
+
 struct LookAndFeel: juce::LookAndFeel_V4
 {
     void drawRotarySlider (juce::Graphics&,
@@ -280,6 +297,10 @@ private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     _3BandMultiEffectorAudioProcessor& audioProcessor;
+    
+    juce::ComboBox distortionTypeComboBox;
+    CustomLookAndFeelComboBox customLookAndFeelComboBox;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> distortionTypeAttachment;
     
     RotarySliderWithLabels peakFreqSlider,
                         peakGainSlider,

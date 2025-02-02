@@ -151,11 +151,18 @@ enum Slope
     Slope_48
 };
 
+enum DistortionType
+{
+    SoftClipping,
+    HardClipping
+};
+
 struct ChainSettings
 {
     float peakFreq {0}, peakGainInDeciibels{0}, peakQuality{1.f};
     float lowCutFreq{0}, highCutFreq{0};
     Slope lowCutSlope {Slope::Slope_12}, highCutSlope {Slope::Slope_12};
+    DistortionType distortionType {DistortionType::SoftClipping};
     float distortionDrive{0}, preGainInDecibels{0}, postGainInDecibels{0}, mix{0};
 };
 
@@ -188,7 +195,8 @@ public:
         processorChain.template get<postGainIndex>().setGainDecibels(gain);
     }
 
-    void setWaveshaperFunction(float (*func)(float))
+    
+    void setWaveshaperFunction(float (*func)(float)) // Change parameter to function pointer
     {
         processorChain.template get<waveshaperIndex>().functionToUse = func;
     }

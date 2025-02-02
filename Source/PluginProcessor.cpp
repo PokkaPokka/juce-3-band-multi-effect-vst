@@ -110,9 +110,9 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
 
     updateFilters();
     
-    dryWetMixer.prepare({ sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getTotalNumOutputChannels() });
-    
-    distortionProcessor.prepare(spec);
+//    dryWetMixer.prepare({ sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getTotalNumOutputChannels() });
+//    
+//    distortionProcessor.prepare(spec);
     
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
@@ -164,8 +164,8 @@ void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& b
     // Update filters and parameters
     updateFilters();
     
-    // Process the distortion effect
-    updateDistortion(buffer);
+//    // Process the distortion effect
+//    updateDistortion(buffer);
 
     // Update FIFO buffers for visualization
     leftChannelFifo.update(buffer);
@@ -285,6 +285,7 @@ void _3BandMultiEffectorAudioProcessor::updateDistortion(juce::AudioBuffer<float
     auto driveValue = apvts.getRawParameterValue("Drive")->load();
     auto postGainValue = apvts.getRawParameterValue("Post Gain")->load();
     auto mix = apvts.getRawParameterValue("Mix")->load() * 0.01f;
+    auto distortionType = int(apvts.getRawParameterValue("Distortion Type")->load());
 
     // Set the mix ratio for the DryWetMixer
     dryWetMixer.setWetMixProportion(mix);
@@ -310,10 +311,15 @@ void _3BandMultiEffectorAudioProcessor::updateDistortion(juce::AudioBuffer<float
     }
 
     // Apply waveshaping distortion
-    distortionProcessor.setWaveshaperFunction([](float x)
-    {
-        return std::tanh(x);
-    });
+    // Determine the distortion type and set the corresponding function
+    if (distortionType == 1) {
+        distortionProcessor.setWaveshaperFunction([](float x) { return std::tanh(x); });
+    } else if (distortionType == 2) {
+        distortionProcessor.setWaveshaperFunction([](float x) { return juce::jlimit(float(-0.1), float(0.1), x); });
+    } else {
+        // Default to tanh if unknown type
+        distortionProcessor.setWaveshaperFunction([](float x) { return x; });
+    }
 
     juce::dsp::AudioBlock<float> wetBlock(wetBuffer);
     distortionProcessor.process(wetBlock);
@@ -369,6 +375,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("Low-Cut Slope", 1), "Low-Cut Slope", stringArray, 0));
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("High-Cut Slope", 1), "High-Cut Slope", stringArray, 0));
     
+    juce::StringArray distortionTypeArray;
+    distortionTypeArray.add("Soft Clipping");
+    distortionTypeArray.add("Hard Clipping");
+    
+    layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("Distortion Type", 1),
+                                                            "Distortion Type", distortionTypeArray, 0));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("Drive", 1),
                                                            "Drive",
                                                            juce::NormalisableRange<float>(0.f, 50.f, 1.f, 1.f),
