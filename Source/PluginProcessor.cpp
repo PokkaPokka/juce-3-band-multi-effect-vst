@@ -110,9 +110,9 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int sa
 
     updateFilters();
     
-//    dryWetMixer.prepare({ sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getTotalNumOutputChannels() });
-//    
-//    distortionProcessor.prepare(spec);
+    dryWetMixer.prepare({ sampleRate, (juce::uint32)samplesPerBlock, (juce::uint32)getTotalNumOutputChannels() });
+    
+    distortionProcessor.prepare(spec);
     
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
@@ -164,8 +164,22 @@ void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& b
     // Update filters and parameters
     updateFilters();
     
-//    // Process the distortion effect
-//    updateDistortion(buffer);
+    // Create an AudioBlock wrapper around the buffer for processing audio data in a flexible way
+    juce::dsp::AudioBlock<float> block(buffer);
+    
+    // Extract the single-channel blocks for the left and right audio channerls from the AudioBlock
+    auto leftBlock = block.getSingleChannelBlock(0);
+    auto rightBlock = block.getSingleChannelBlock(1);
+    
+    // Create ProcessContextReplacing objects for both channels, representing the audio data to be processed
+    juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
+    juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
+    
+    leftChain.process(leftContext);
+    rightChain.process(rightContext);
+    
+    // Process the distortion effect
+    updateDistortion(buffer);
 
     // Update FIFO buffers for visualization
     leftChannelFifo.update(buffer);
