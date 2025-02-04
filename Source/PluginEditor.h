@@ -308,11 +308,11 @@ private:
                         lowCutFreqSlider,
                         highCutFreqSlider,
                         lowCutSlopeSlider,
-                        highCutSlopeSlider,
-                        distortionDriveSlider,
-                        preGainSlider,
-                        postGainSlider,
-                        mixSlider;
+    highCutSlopeSlider;
+//                        distortionDriveSlider,
+//                        preGainSlider,
+//                        postGainSlider,
+//                        mixSlider;
     
     ResponseCurveComponent responseCurveComponent;
     
@@ -326,11 +326,11 @@ private:
                 lowCutFreqSliderAttachment,
                 highCutFreqSliderAttachment,
                 lowCutSlopeSliderAttachment,
-                highCutSlopeSliderAttachment,
-                disortionDriveAttachment,
-                preGainAttachment,
-                postGainAttachment,
-                mixAttachment;
+                highCutSlopeSliderAttachment;
+//                disortionDriveAttachment,
+//                preGainAttachment,
+//                postGainAttachment,
+//                mixAttachment;
     
     std::vector<juce::Component*> getComps();
     

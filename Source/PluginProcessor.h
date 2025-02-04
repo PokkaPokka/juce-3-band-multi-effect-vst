@@ -157,13 +157,19 @@ enum DistortionType
     HardClipping
 };
 
+struct BandSettings {
+    DistortionType type{ DistortionType::SoftClipping };
+    float drive{ 0.0f }, preGain{ 0.0f }, postGain{ 0.0f }, mix{ 100.0f };
+};
+
 struct ChainSettings
 {
     float peakFreq {0}, peakGainInDeciibels{0}, peakQuality{1.f};
     float lowCutFreq{0}, highCutFreq{0};
     Slope lowCutSlope {Slope::Slope_12}, highCutSlope {Slope::Slope_12};
     DistortionType distortionType {DistortionType::SoftClipping};
-    float distortionDrive{0}, preGainInDecibels{0}, postGainInDecibels{0}, mix{0};
+    float crossoverLow{ 200.0f }, crossoverHigh{ 2000.0f };
+    BandSettings lowBand, midBand, highBand;
 };
 
 // A template class for distortion effects
@@ -201,25 +207,36 @@ public:
         processorChain.template get<waveshaperIndex>().functionToUse = func;
     }
 
-    void process(juce::dsp::AudioBlock<FloatType>& block)
+    void process(juce::dsp::ProcessContextReplacing<float>& context)
     {
-        juce::dsp::ProcessContextReplacing<FloatType> context(block);
         processorChain.process(context);
+    }
+    
+    void setDrive(float driveLinear) {
+        processorChain.template get<driveIndex>().setGainLinear(driveLinear);
     }
 
 private:
     enum
     {
         preGainIndex,
+        driveIndex,
         waveshaperIndex,
         postGainIndex
     };
 
     juce::dsp::ProcessorChain<
-        juce::dsp::Gain<FloatType>,       // Pre-gain
-        juce::dsp::WaveShaper<FloatType>, // Waveshaper
-        juce::dsp::Gain<FloatType>        // Post-gain
+        juce::dsp::Gain<float>,   // Pre-gain (dB)
+        juce::dsp::Gain<float>,   // Drive (linear)
+        juce::dsp::WaveShaper<float>,
+        juce::dsp::Gain<float>    // Post-gain (dB)
     > processorChain;
+};
+
+struct CrossoverFilters {
+    juce::dsp::LinkwitzRileyFilter<float> lowPassL, highPassM, lowPassM, highPassH;
+    void prepare(const juce::dsp::ProcessSpec& spec);
+    void update(float crossoverLow, float crossoverHigh);
 };
 
 // A reference to the TreeState, which manages and connects parameter states in
@@ -380,8 +397,20 @@ private:
     void updateHighCutFilters(const ChainSettings& chainSettings);
     void updateFilters();
     void updateDistortion(juce::AudioBuffer<float>&);
+    void updateBandDistortion(Distortion<float>& distortionProcessor, const BandSettings& bandSettings);
+    void processBand(
+        const juce::AudioBuffer<float>& eqBuffer,
+        juce::AudioBuffer<float>& output,
+        int bandIndex,
+        juce::dsp::LinkwitzRileyFilter<float>& leftFilter,
+        juce::dsp::LinkwitzRileyFilter<float>& rightFilter,
+        Distortion<float>& leftDistortion,
+        Distortion<float>& rightDistortion);
     juce::dsp::Oscillator<float> osc;
     juce::dsp::DryWetMixer<float> dryWetMixer;
+    CrossoverFilters leftCrossover, rightCrossover;
+    Distortion<float> leftBands[3], rightBands[3]; // 0: low, 1: mid, 2: high
+    juce::AudioBuffer<float> tempBuffers[3]; // For band processing
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessor)
 };
