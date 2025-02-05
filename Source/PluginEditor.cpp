@@ -59,18 +59,19 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         g.fillPath(p);
         
         // Draw parameter ID above the slider
-        if (rswl->param != nullptr) {
-            g.setFont(rswl->getTextHeight() - 1);
+        if (rswl->param) {
+            auto paramID = rswl->param->getParameterID();
+            bool isPeakParam = (paramID == "Peak Frequency" || paramID == "Peak Gain" || paramID == "Peak Quality");
+
+            g.setFont(rswl->getTextHeight() + (isPeakParam ? -2 : -1));
             g.setColour(Colour(114, 125, 115));
-            
-            // Get the parameter ID
+
             auto paramName = rswl->param->name;
             auto textWidth = g.getCurrentFont().getStringWidth(paramName);
             
-            Rectangle<float> paramNameBounds;
-            paramNameBounds.setSize(textWidth + 6, rswl->getTextHeight() + 2);
-            paramNameBounds.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() * 2); // Position above the slider
-            
+            Rectangle<float> paramNameBounds(textWidth + 6, rswl->getTextHeight() + 2);
+            paramNameBounds.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() * 2);
+
             g.setColour(Colour(208, 221, 208));
             g.fillRect(paramNameBounds);
             
@@ -86,7 +87,11 @@ void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, 
         auto text = rswl->getDisplayString();
         auto strWidth = g.getCurrentFont().getStringWidth(text) + 2;
         
-        r.setSize(strWidth + 4, rswl->getTextHeight() + 1);
+        if (rswl->param != nullptr && (rswl->param->getParameterID() == "Peak Frequency" || rswl->param->getParameterID() == "Peak Gain" || rswl->param->getParameterID() == "Peak Quality")) {
+            r.setSize(strWidth + 2, rswl->getTextHeight() - 1);
+        } else {
+            r.setSize(strWidth + 4, rswl->getTextHeight() + 1);
+        }
         r.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() + 1);
         
         g.setColour(Colour(208, 221, 208));
@@ -108,10 +113,10 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
     auto range = getRange();
     auto sliderBounds = getSliderBounds();
     
-//    g.setColour(Colours::red);
-//    g.drawRect(getLocalBounds());
-//    g.setColour(Colours::yellow);
-//    g.drawRect(sliderBounds);
+    g.setColour(Colours::red);
+    g.drawRect(getLocalBounds());
+    g.setColour(Colours::yellow);
+    g.drawRect(sliderBounds);
    
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(), sliderBounds.getWidth(), sliderBounds.getHeight(), jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0), startAng, endAng, *this);
     
@@ -125,7 +130,7 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
         g.setFont(param != nullptr && (param->getParameterID() == "Peak Frequency" ||
                                        param->getParameterID() == "Peak Gain" ||
                                        param->getParameterID() == "Peak Quality")
-                      ? getTextHeight() - 2
+                      ? getTextHeight() - 3
                       : getTextHeight() - 1);
 
         auto pos = labels[i].pos;
@@ -408,10 +413,26 @@ lowCutFreqSlider(*audioProcessor.apvts.getParameter("Low-Cut Frequency"), "Hz"),
 highCutFreqSlider(*audioProcessor.apvts.getParameter("High-Cut Frequency"), "Hz"),
 lowCutSlopeSlider(*audioProcessor.apvts.getParameter("Low-Cut Slope"), "dB/Oct"),
 highCutSlopeSlider(*audioProcessor.apvts.getParameter("High-Cut Slope"), "dB/Oct"),
-//distortionDriveSlider(*audioProcessor.apvts.getParameter("Drive"), "dB"),
-//preGainSlider(*audioProcessor.apvts.getParameter("Pre Gain"), "dB"),
-//postGainSlider(*audioProcessor.apvts.getParameter("Post Gain"), "dB"),
-//mixSlider(*audioProcessor.apvts.getParameter("Mix"), "%"),
+
+crossoverLowSlider(*audioProcessor.apvts.getParameter("CrossoverLow"), "Hz"),
+crossoverHighSlider(*audioProcessor.apvts.getParameter("CrossoverHigh"), "Hz"),
+
+lowBandPreGainSlider(*audioProcessor.apvts.getParameter("LowBandPreGain"), "dB"),
+midBandPreGainSlider(*audioProcessor.apvts.getParameter("MidBandPreGain"), "dB"),
+highBandPreGainSlider(*audioProcessor.apvts.getParameter("HighBandPreGain"), "dB"),
+
+lowBandDriveSlider(*audioProcessor.apvts.getParameter("LowBandDrive"), ""),
+midBandDriveSlider(*audioProcessor.apvts.getParameter("MidBandDrive"), ""),
+highBandDriveSlider(*audioProcessor.apvts.getParameter("HighBandDrive"), ""),
+
+lowBandPostGainSlider(*audioProcessor.apvts.getParameter("LowBandPostGain"), "dB"),
+midBandPostGainSlider(*audioProcessor.apvts.getParameter("MidBandPostGain"), "dB"),
+highBandPostGainSlider(*audioProcessor.apvts.getParameter("HighBandPostGain"), "dB"),
+
+lowBandMixSlider(*audioProcessor.apvts.getParameter("LowBandMix"), "%"),
+midBandMixSlider(*audioProcessor.apvts.getParameter("MidBandMix"), "%"),
+highBandMixSlider(*audioProcessor.apvts.getParameter("HighBandMix"), "%"),
+
 
 responseCurveComponent(audioProcessor),
 peakFreqSliderAttachment(audioProcessor.apvts, "Peak Frequency", peakFreqSlider),
@@ -420,12 +441,26 @@ peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySli
 lowCutFreqSliderAttachment(audioProcessor.apvts, "Low-Cut Frequency", lowCutFreqSlider),
 highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutFreqSlider),
 lowCutSlopeSliderAttachment(audioProcessor.apvts,"Low-Cut Slope", lowCutSlopeSlider),
-highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider)
-//disortionDriveAttachment(audioProcessor.apvts, "Drive", distortionDriveSlider),
-//preGainAttachment(audioProcessor.apvts, "Pre Gain", preGainSlider),
-//postGainAttachment(audioProcessor.apvts, "Post Gain", postGainSlider),
-//mixAttachment(audioProcessor.apvts, "Mix", mixSlider)
+highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider),
 
+crossoverLowSliderAttachment(audioProcessor.apvts, "CrossoverLow", crossoverLowSlider),
+crossoverHighSliderAttachment(audioProcessor.apvts, "CrossoverHigh", crossoverHighSlider),
+
+lowBandPreGainSliderAttachment(audioProcessor.apvts, "LowBandPreGain", lowBandPreGainSlider),
+midBandPreGainSliderAttachment(audioProcessor.apvts, "MidBandPreGain", midBandPreGainSlider),
+highBandPreGainSliderAttachment(audioProcessor.apvts, "HighBandPreGain", highBandPreGainSlider),
+
+lowBandDriveSliderAttachment(audioProcessor.apvts, "LowBandDrive", lowBandDriveSlider),
+midBandDriveSliderAttachment(audioProcessor.apvts, "MidBandDrive", midBandDriveSlider),
+highBandDriveSliderAttachment(audioProcessor.apvts, "HighBandDrive", highBandDriveSlider),
+
+lowBandPostGainSliderAttachment(audioProcessor.apvts, "LowBandPostGain", lowBandPostGainSlider),
+midBandPostGainSliderAttachment(audioProcessor.apvts, "MidBandPostGain", midBandPostGainSlider),
+highBandPostGainSliderAttachment(audioProcessor.apvts, "HighBandPostGain", highBandPostGainSlider),
+
+lowBandMixSliderAttachment(audioProcessor.apvts, "LowBandMix", lowBandMixSlider),
+midBandMixSliderAttachment(audioProcessor.apvts, "MidBandMix", midBandMixSlider),
+highBandMixSliderAttachment(audioProcessor.apvts, "HighBandMix", highBandMixSlider)
 {
     // Labels for Peak Frequency Slider
     peakFreqSlider.labels.add({0.f, "20"});
@@ -455,24 +490,74 @@ highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlop
     highCutSlopeSlider.labels.add({0.f, "12"});
     highCutSlopeSlider.labels.add({1.f, "48"});
     
-//    //Labels for Distortion Drive Slider
-//    distortionDriveSlider.labels.add({0.f, "0"});
-//    distortionDriveSlider.labels.add({1.f, "50"});
-//    
-//    preGainSlider.labels.add({0.f, "-40"});
-//    preGainSlider.labels.add({1.f, "20"});
-//    
-//    postGainSlider.labels.add({0.f, "-40"});
-//    postGainSlider.labels.add({1.f, "20"});
-//    
-//    mixSlider.labels.add({0.f, "0"});
-//    mixSlider.labels.add({1.f, "100"});
+    // Labels for Crossover Low Slider
+    crossoverLowSlider.labels.add({0.f, "20"});
+    crossoverLowSlider.labels.add({1.f, "5k"});
     
-    distortionTypeComboBox.addItem("Soft Clipping", 1);
-    distortionTypeComboBox.addItem("Hard Clipping", 2);
+    // Labels for Crossover High Slider
+    crossoverHighSlider.labels.add({0.f, "5k"});
+    crossoverHighSlider.labels.add({1.f, "20k"});
     
-    distortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
-    addAndMakeVisible(distortionTypeComboBox);
+    // Labels for Low Band Pre-Gain Slider
+    lowBandPreGainSlider.labels.add({0.f, "-40"});
+    lowBandPreGainSlider.labels.add({1.f, "20"});
+    
+    // Labels for Mid Band Pre-Gain Slider
+    midBandPreGainSlider.labels.add({0.f, "-40"});
+    midBandPreGainSlider.labels.add({1.f, "20"});
+    
+    // Labels for High Band Pre-Gain Slider
+    highBandPreGainSlider.labels.add({0.f, "-40"});
+    highBandPreGainSlider.labels.add({1.f, "20"});
+    
+    // Labels for Low Band Drive Slider
+    lowBandDriveSlider.labels.add({0.f, "0"});
+    lowBandDriveSlider.labels.add({1.f, "50"});
+    
+    // Labels for Mid Band Drive Slider
+    midBandDriveSlider.labels.add({0.f, "0"});
+    midBandDriveSlider.labels.add({1.f, "50"});
+    
+    // Labels for High Band Drive Slider
+    highBandDriveSlider.labels.add({0.f, "0"});
+    highBandDriveSlider.labels.add({1.f, "50"});
+    
+    // Labels for Low Band Post-Gain Slider
+    lowBandPostGainSlider.labels.add({0.f, "-40"});
+    lowBandPostGainSlider.labels.add({1.f, "20"});
+    
+    // Labels for Mid Band Post-Gain Slider
+    midBandPostGainSlider.labels.add({0.f, "-40"});
+    midBandPostGainSlider.labels.add({1.f, "20"});
+    
+    // Labels for High Band Post-Gain Slider
+    highBandPostGainSlider.labels.add({0.f, "-40"});
+    highBandPostGainSlider.labels.add({1.f, "20"});
+    
+    // Labels for Low Band Mix Slider
+    lowBandMixSlider.labels.add({0.f, "0"});
+    lowBandMixSlider.labels.add({1.f, "100"});
+    
+    // Labels for Mid Band Mix Slider
+    midBandMixSlider.labels.add({0.f, "0"});
+    midBandMixSlider.labels.add({1.f, "100"});
+    
+    // Labels for High Band Mix Slider
+    highBandMixSlider.labels.add({0.f, "0"});
+    highBandMixSlider.labels.add({1.f, "100"});
+    
+    lowDistortionTypeComboBox.addItem("Soft Clipping", 1);
+    lowDistortionTypeComboBox.addItem("Hard Clipping", 2);
+    
+    midDistortionTypeComboBox.addItem("Soft Clipping", 1);
+    midDistortionTypeComboBox.addItem("Hard Clipping", 2);
+    
+    highDistortionTypeComboBox.addItem("Soft Clipping", 1);
+    highDistortionTypeComboBox.addItem("Hard Clipping", 2);
+    
+    lowDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
+    midDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
+    highDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
     
     for (auto* comp: getComps())
     {
@@ -481,12 +566,31 @@ highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlop
     
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (500, 650);
+    setSize (500, 900);
+}
+
+void setDistortionComboBoxBounds(juce::Rectangle<int> bounds, int comboBoxHeight,
+                                 juce::ComboBox& lowCombo, juce::ComboBox& midCombo, juce::ComboBox& highCombo)
+{
+    bounds.setHeight(comboBoxHeight);
+    bounds.setTop(bounds.getY() + 10);
+
+    // Reduce the total width allocated to combo boxes
+    int totalComboBoxWidth = bounds.getWidth() * 0.7;
+    int comboBoxWidth = totalComboBoxWidth / 3;  // Divide equally for three combo boxes
+    int spacing = (bounds.getWidth() - totalComboBoxWidth) / 4;  // Distribute space
+
+    // Position each combo box with spacing
+    lowCombo.setBounds(bounds.getX() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
+    midCombo.setBounds(lowCombo.getRight() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
+    highCombo.setBounds(midCombo.getRight() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
 }
 
 _3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
 {
-    distortionTypeComboBox.setLookAndFeel(nullptr);
+    lowDistortionTypeComboBox.setLookAndFeel(nullptr);
+    midDistortionTypeComboBox.setLookAndFeel(nullptr);
+    highDistortionTypeComboBox.setLookAndFeel(nullptr);
 }
 
 //==============================================================================
@@ -501,14 +605,14 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
     auto bounds = getLocalBounds();
-    float hRatio = 20 / 100.f;
+    float hRatio = 13 / 100.f;
     
     // Reserve the top area for the response curve
     auto responseArea = bounds.removeFromTop(bounds.getHeight() * hRatio);
     responseCurveComponent.setBounds(responseArea);
     
     // Reserve some space at the bottom for new sliders
-    const int bottomMargin = bounds.getHeight() * 0.4;
+    const int bottomMargin = bounds.getHeight() * 0.65;
     bounds.removeFromBottom(bottomMargin);
     
     // Layout the low cut and high cut areas
@@ -527,32 +631,62 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     peakFreqSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.33));
     peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.5));
     peakQualitySlider.setBounds(bounds);
+    
+    // Layout the crossover sliders
+    auto crossoverArea = getLocalBounds();
+    crossoverArea.setTop(bounds.getBottom());
+    crossoverArea.setHeight(bounds.getHeight() * 1.3);
+    crossoverLowSlider.setBounds(crossoverArea.removeFromLeft(crossoverArea.getWidth() * 0.5));
+    crossoverHighSlider.setBounds(crossoverArea);
+    
+    // Define height for the ComboBox
+    int comboBoxHeight = 25;  // Adjust as needed
 
-//    // Define height for the ComboBox
-//    int comboBoxHeight = 20;  // Adjust as needed
-//
-//    // Get the distortion bounds and calculate width
-//    auto distortionBounds = getLocalBounds();
-//    distortionBounds.setTop(bounds.getBottom() + comboBoxHeight);  // Start below the bounds
-//
-//    // Define the width for the ComboBox (centered)
-//    auto comboBoxWidth = distortionBounds.getWidth() / 3; // Half the width
-//    auto comboBoxX = distortionBounds.getCentreX() - (comboBoxWidth / 2); // Center it
-//    
-//    // Set bounds for the ComboBox
-//    distortionTypeComboBox.setBounds(comboBoxX, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
-//
-//    // Adjust the distortionBounds to move down after the ComboBox
-//    distortionBounds.setY(distortionBounds.getY() + comboBoxHeight);
-//
-//    // Calculate the width for each slider
-//    auto sliderWidth = distortionBounds.getWidth() / 4;
-//
-//    // Set bounds for each slider
-//    preGainSlider.setBounds(distortionBounds.removeFromLeft(sliderWidth));
-//    distortionDriveSlider.setBounds(distortionBounds.removeFromLeft(sliderWidth));
-//    postGainSlider.setBounds(distortionBounds.removeFromLeft(sliderWidth));
-//    mixSlider.setBounds(distortionBounds);
+    // Get the distortion bounds and set its starting position
+    auto distortionBounds = getLocalBounds();
+    distortionBounds.setTop(crossoverArea.getBottom() + 10);
+    distortionBounds.setHeight(comboBoxHeight);
+
+    // Reduce the total width allocated to combo boxes
+    int totalComboBoxWidth = distortionBounds.getWidth() * 0.7;
+    int comboBoxWidth = totalComboBoxWidth / 3;  // Divide equally for three combo boxes
+    int spacing = (distortionBounds.getWidth() - totalComboBoxWidth) / 4;  // Distribute space
+
+    // Position each combo box with spacing
+    lowDistortionTypeComboBox.setBounds(distortionBounds.getX() + spacing, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
+    midDistortionTypeComboBox.setBounds(lowDistortionTypeComboBox.getRight() + spacing, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
+    highDistortionTypeComboBox.setBounds(midDistortionTypeComboBox.getRight() + spacing, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
+    
+    // Layout the band controls
+    auto bandArea = getLocalBounds();
+    bandArea.setTop(distortionBounds.getBottom() + 10);
+
+    auto bandWidth = bandArea.getWidth() / 3;
+    auto lowBandArea = bandArea.removeFromLeft(bandWidth);
+    auto midBandArea = bandArea.removeFromLeft(bandWidth);
+    auto highBandArea = bandArea; // Remaining space for high band
+    
+    // Determine equal height for each slider within the band area
+    int numSliders = 4; // Pre-Gain, Drive, Post-Gain, Mix
+    int sliderHeight = lowBandArea.getHeight() / numSliders;
+
+    // Assign sliders evenly within their respective areas
+    lowBandPreGainSlider.setBounds(lowBandArea.removeFromTop(sliderHeight));
+    midBandPreGainSlider.setBounds(midBandArea.removeFromTop(sliderHeight));
+    highBandPreGainSlider.setBounds(highBandArea.removeFromTop(sliderHeight));
+
+    lowBandDriveSlider.setBounds(lowBandArea.removeFromTop(sliderHeight));
+    midBandDriveSlider.setBounds(midBandArea.removeFromTop(sliderHeight));
+    highBandDriveSlider.setBounds(highBandArea.removeFromTop(sliderHeight));
+
+    lowBandPostGainSlider.setBounds(lowBandArea.removeFromTop(sliderHeight));
+    midBandPostGainSlider.setBounds(midBandArea.removeFromTop(sliderHeight));
+    highBandPostGainSlider.setBounds(highBandArea.removeFromTop(sliderHeight));
+
+    lowBandMixSlider.setBounds(lowBandArea);
+    midBandMixSlider.setBounds(midBandArea);
+    highBandMixSlider.setBounds(highBandArea);
+    
 }
 
 std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps()
@@ -566,10 +700,23 @@ std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps(
         &highCutFreqSlider,
         &lowCutSlopeSlider,
         &highCutSlopeSlider,
-//        &distortionDriveSlider,
-//        &preGainSlider,
-//        &postGainSlider,
-//        &mixSlider,
+        &crossoverLowSlider,
+        &crossoverHighSlider,
+        &lowBandPreGainSlider,
+        &midBandPreGainSlider,
+        &highBandPreGainSlider,
+        &lowBandDriveSlider,
+        &midBandDriveSlider,
+        &highBandDriveSlider,
+        &lowBandPostGainSlider,
+        &midBandPostGainSlider,
+        &highBandPostGainSlider,
+        &lowBandMixSlider,
+        &midBandMixSlider,
+        &highBandMixSlider,
+        &lowDistortionTypeComboBox,
+        &midDistortionTypeComboBox,
+        &highDistortionTypeComboBox,
         &responseCurveComponent
     };
 }

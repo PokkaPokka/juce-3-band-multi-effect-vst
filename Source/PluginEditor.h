@@ -298,9 +298,15 @@ private:
     // access the processor object that created it.
     _3BandMultiEffectorAudioProcessor& audioProcessor;
     
-    juce::ComboBox distortionTypeComboBox;
+    juce::ComboBox lowDistortionTypeComboBox;
+    juce::ComboBox midDistortionTypeComboBox;
+    juce::ComboBox highDistortionTypeComboBox;
+    
     CustomLookAndFeelComboBox customLookAndFeelComboBox;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> distortionTypeAttachment;
+    
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> lowDistortionTypeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> midDistortionTypeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> highDistortionTypeAttachment;
     
     RotarySliderWithLabels peakFreqSlider,
                         peakGainSlider,
@@ -308,11 +314,21 @@ private:
                         lowCutFreqSlider,
                         highCutFreqSlider,
                         lowCutSlopeSlider,
-    highCutSlopeSlider;
-//                        distortionDriveSlider,
-//                        preGainSlider,
-//                        postGainSlider,
-//                        mixSlider;
+                        highCutSlopeSlider,
+                        crossoverLowSlider,
+                        crossoverHighSlider,
+                        lowBandPreGainSlider,
+                        midBandPreGainSlider,
+                        highBandPreGainSlider,
+                        lowBandDriveSlider,
+                        midBandDriveSlider,
+                        highBandDriveSlider,
+                        lowBandPostGainSlider,
+                        midBandPostGainSlider,
+                        highBandPostGainSlider,
+                        lowBandMixSlider,
+                        midBandMixSlider,
+                        highBandMixSlider;
     
     ResponseCurveComponent responseCurveComponent;
     
@@ -326,11 +342,21 @@ private:
                 lowCutFreqSliderAttachment,
                 highCutFreqSliderAttachment,
                 lowCutSlopeSliderAttachment,
-                highCutSlopeSliderAttachment;
-//                disortionDriveAttachment,
-//                preGainAttachment,
-//                postGainAttachment,
-//                mixAttachment;
+                highCutSlopeSliderAttachment,
+                crossoverLowSliderAttachment,
+                crossoverHighSliderAttachment,
+                lowBandPreGainSliderAttachment,
+                midBandPreGainSliderAttachment,
+                highBandPreGainSliderAttachment,
+                lowBandDriveSliderAttachment,
+                midBandDriveSliderAttachment,
+                highBandDriveSliderAttachment,
+                lowBandPostGainSliderAttachment,
+                midBandPostGainSliderAttachment,
+                highBandPostGainSliderAttachment,
+                lowBandMixSliderAttachment,
+                midBandMixSliderAttachment,
+                highBandMixSliderAttachment;
     
     std::vector<juce::Component*> getComps();
     

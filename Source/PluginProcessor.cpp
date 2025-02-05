@@ -222,8 +222,8 @@ bool _3BandMultiEffectorAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* _3BandMultiEffectorAudioProcessor::createEditor()
 {
-//    return new _3BandMultiEffectorAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new _3BandMultiEffectorAudioProcessorEditor (*this);
+//    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
