@@ -159,7 +159,7 @@ enum DistortionType
 
 struct BandSettings {
     DistortionType type{ DistortionType::SoftClipping };
-    float drive{ 0.0f }, preGain{ 0.0f }, postGain{ 0.0f }, mix{ 100.0f };
+    float drive{ 0.0f }, postGain{ 0.0f }, mix{ 100.0f };
 };
 
 struct ChainSettings
@@ -179,7 +179,6 @@ class Distortion
 public:
     Distortion()
     {
-        processorChain.template get<preGainIndex>().setGainDecibels(0.0f);
         processorChain.template get<waveshaperIndex>().functionToUse = [](FloatType x) {
             return std::tanh(x);
         };
@@ -191,18 +190,13 @@ public:
         processorChain.prepare(spec);
     }
 
-    void setPreGain(FloatType gain)
-    {
-        processorChain.template get<preGainIndex>().setGainDecibels(gain);
-    }
-
     void setPostGain(FloatType gain)
     {
         processorChain.template get<postGainIndex>().setGainDecibels(gain);
     }
 
     
-    void setWaveshaperFunction(float (*func)(float)) // Change parameter to function pointer
+    void setWaveshaperFunction(float (*func)(float))
     {
         processorChain.template get<waveshaperIndex>().functionToUse = func;
     }
@@ -219,14 +213,12 @@ public:
 private:
     enum
     {
-        preGainIndex,
         driveIndex,
         waveshaperIndex,
         postGainIndex
     };
 
     juce::dsp::ProcessorChain<
-        juce::dsp::Gain<float>,   // Pre-gain (dB)
         juce::dsp::Gain<float>,   // Drive (linear)
         juce::dsp::WaveShaper<float>,
         juce::dsp::Gain<float>    // Post-gain (dB)

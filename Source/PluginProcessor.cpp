@@ -266,19 +266,16 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
     
     settings.lowBand.type = static_cast<DistortionType>(apvts.getRawParameterValue("LowBandType")->load());
     settings.lowBand.drive = apvts.getRawParameterValue("LowBandDrive")->load();
-    settings.lowBand.preGain = apvts.getRawParameterValue("LowBandPreGain")->load();
     settings.lowBand.postGain = apvts.getRawParameterValue("LowBandPostGain")->load();
     settings.lowBand.mix = apvts.getRawParameterValue("LowBandMix")->load();
     
     settings.midBand.type = static_cast<DistortionType>(apvts.getRawParameterValue("MidBandType")->load());
     settings.midBand.drive = apvts.getRawParameterValue("MidBandDrive")->load();
-    settings.midBand.preGain = apvts.getRawParameterValue("MidBandPreGain")->load();
     settings.midBand.postGain = apvts.getRawParameterValue("MidBandPostGain")->load();
     settings.midBand.mix = apvts.getRawParameterValue("MidBandMix")->load();
     
     settings.highBand.type = static_cast<DistortionType>(apvts.getRawParameterValue("HighBandType")->load());
     settings.highBand.drive = apvts.getRawParameterValue("HighBandDrive")->load();
-    settings.highBand.preGain = apvts.getRawParameterValue("HighBandPreGain")->load();
     settings.highBand.postGain = apvts.getRawParameterValue("HighBandPostGain")->load();
     settings.highBand.mix = apvts.getRawParameterValue("HighBandMix")->load();
     
@@ -332,62 +329,6 @@ void _3BandMultiEffectorAudioProcessor::updateFilters()
     updateHighCutFilters(chainSettings);
 }
 
-//void _3BandMultiEffectorAudioProcessor::updateDistortion(juce::AudioBuffer<float>& buffer)
-//{
-//    // Get current filter settings from the AudioProcessorValueTreeState (sliders)
-//    auto preGainValue = apvts.getRawParameterValue("Pre Gain")->load();
-//    auto driveValue = apvts.getRawParameterValue("Drive")->load();
-//    auto postGainValue = apvts.getRawParameterValue("Post Gain")->load();
-//    auto mix = apvts.getRawParameterValue("Mix")->load() * 0.01f;
-//    auto distortionType = int(apvts.getRawParameterValue("Distortion Type")->load());
-//
-//    // Set the mix ratio for the DryWetMixer
-//    dryWetMixer.setWetMixProportion(mix);
-//
-//    // Push the dry buffer to the mixer before processing
-//    dryWetMixer.pushDrySamples(buffer);
-//    
-//    // Create a copy of the input buffer for the wet signal
-//    juce::AudioBuffer<float> wetBuffer(buffer);
-//
-//    // Apply pre-gain to the wet buffer
-//    wetBuffer.applyGain(juce::Decibels::decibelsToGain(preGainValue));
-//
-//    // Apply drive gain before waveshaper
-//    auto* channelDataLeft = wetBuffer.getWritePointer(0);
-//    auto* channelDataRight = wetBuffer.getWritePointer(1);
-//    for (int sample = 0; sample < wetBuffer.getNumSamples(); ++sample)
-//    {
-//        if (driveValue > 0.f) {
-//            channelDataLeft[sample] *= driveValue;
-//            channelDataRight[sample] *= driveValue;
-//        }
-//    }
-//
-//    // Apply waveshaping distortion
-//    // Determine the distortion type and set the corresponding function
-//    if (distortionType == 1) {
-//        distortionProcessor.setWaveshaperFunction([](float x) { return std::tanh(x); });
-//    } else if (distortionType == 2) {
-//        distortionProcessor.setWaveshaperFunction([](float x) { return juce::jlimit(float(-0.1), float(0.1), x); });
-//    } else {
-//        // Default to tanh if unknown type
-//        distortionProcessor.setWaveshaperFunction([](float x) { return x; });
-//    }
-//
-//    juce::dsp::AudioBlock<float> wetBlock(wetBuffer);
-//    distortionProcessor.process(wetBlock);
-//
-//    // Apply post-gain to the wet buffer
-//    wetBuffer.applyGain(juce::Decibels::decibelsToGain(postGainValue));
-//
-//    dryWetMixer.mixWetSamples(wetBuffer); // Mix in the wet (processed) signal
-//
-//    // Copy the mixed result back to the main buffer
-//    buffer.copyFrom(0, 0, wetBuffer, 0, 0, buffer.getNumSamples());
-//    buffer.copyFrom(1, 0, wetBuffer, 1, 0, buffer.getNumSamples());
-//}
-
 void CrossoverFilters::prepare(const juce::dsp::ProcessSpec& spec) {
     lowPassL.prepare(spec);
     highPassM.prepare(spec);
@@ -407,15 +348,18 @@ void _3BandMultiEffectorAudioProcessor::updateBandDistortion(
     const BandSettings& bandSettings)
 {
     // Set parameters for this band's distortion
-    distortionProcessor.setPreGain(bandSettings.preGain);
-    distortionProcessor.setDrive(bandSettings.drive);
+    float drive = bandSettings.drive;
+    distortionProcessor.setDrive(drive);
     
     switch (bandSettings.type) {
         case DistortionType::SoftClipping:
             distortionProcessor.setWaveshaperFunction([](float x) { return std::tanh(x); });
             break;
         case DistortionType::HardClipping:
-            distortionProcessor.setWaveshaperFunction([](float x) { return juce::jlimit(-1.0f, 1.0f, x); });
+            distortionProcessor.setWaveshaperFunction([](float x) { return juce::jlimit (float (-0.1), float (0.1), x); });
+            break;
+        default:
+            distortionProcessor.setWaveshaperFunction([](float x) { return std::tanh(x); });
             break;
     }
     
@@ -452,7 +396,11 @@ void _3BandMultiEffectorAudioProcessor::processBand(
     {
         juce::dsp::ProcessContextReplacing<float> context(leftBlock);
         leftFilter.process(context);
-        leftDistortion.process(context);
+
+        // Bypass distortion if drive is 0
+        if (bandSettings->drive > 0.0f) {
+            leftDistortion.process(context);
+        }
     }
 
     // Process right channel
@@ -460,7 +408,11 @@ void _3BandMultiEffectorAudioProcessor::processBand(
     {
         juce::dsp::ProcessContextReplacing<float> context(rightBlock);
         rightFilter.process(context);
-        rightDistortion.process(context);
+
+        // Bypass distortion if drive is 0
+        if (bandSettings->drive > 0.0f) {
+            rightDistortion.process(context);
+        }
     }
 
     // Calculate mix factors
@@ -472,7 +424,7 @@ void _3BandMultiEffectorAudioProcessor::processBand(
         output.addFrom(ch, 0,
                        eqBuffer, ch, 0, output.getNumSamples(), // Dry signal
                        dryGain);
-        
+
         output.addFrom(ch, 0,
                        tempBuffers[bandIndex], ch, 0, output.getNumSamples(), // Wet signal
                        wetGain);
@@ -533,34 +485,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("LowBandType", 109), "Low Band Type", distortionTypeArray, 0));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("LowBandDrive", 110), "Low Band Drive",
         juce::NormalisableRange<float>(0.0f, 50.0f, 1.0f), 0.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("LowBandPreGain", 111), "Low Band Pre Gain",
-        juce::NormalisableRange<float>(-40.0f, 20.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("LowBandPostGain", 112), "Low Band Post Gain",
         juce::NormalisableRange<float>(-40.0f, 20.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("LowBandMix", 113), "Low Band Mix",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 100.0f));
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f));
     
     // Mid Band Parameters
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("MidBandType", 114), "Mid Band Type", distortionTypeArray, 0));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MidBandDrive", 115), "Mid Band Drive",
         juce::NormalisableRange<float>(0.0f, 50.0f, 1.0f), 0.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MidBandPreGain", 116), "Mid Band Pre Gain",
-        juce::NormalisableRange<float>(-40.0f, 20.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MidBandPostGain", 117), "Mid Band Post Gain",
         juce::NormalisableRange<float>(-40.0f, 20.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("MidBandMix", 118), "Mid Band Mix",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 100.0f));
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f));
     
     // High Band Parameters
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("HighBandType", 119), "High Band Type", distortionTypeArray, 0));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("HighBandDrive", 120), "High Band Drive",
         juce::NormalisableRange<float>(0.0f, 50.0f, 1.0f), 0.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("HighBandPreGain", 121), "High Band Pre Gain",
-        juce::NormalisableRange<float>(-40.0f, 20.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("HighBandPostGain", 122), "High Band Post Gain",
         juce::NormalisableRange<float>(-40.0f, 20.0f, 1.0f), 0.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("HighBandMix", 123), "High Band Mix",
-        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 100.0f));
+        juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f));
 
     return layout;
 }

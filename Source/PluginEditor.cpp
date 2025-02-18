@@ -113,10 +113,10 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
     auto range = getRange();
     auto sliderBounds = getSliderBounds();
     
-    g.setColour(Colours::red);
-    g.drawRect(getLocalBounds());
-    g.setColour(Colours::yellow);
-    g.drawRect(sliderBounds);
+//    g.setColour(Colours::red);
+//    g.drawRect(getLocalBounds());
+//    g.setColour(Colours::yellow);
+//    g.drawRect(sliderBounds);
    
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(), sliderBounds.getWidth(), sliderBounds.getHeight(), jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0), startAng, endAng, *this);
     
@@ -403,64 +403,45 @@ juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
     return bounds;
 }
 //==============================================================================
-_3BandMultiEffectorAudioProcessorEditor::
-_3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor& p)
-: AudioProcessorEditor (&p), audioProcessor (p),
-peakFreqSlider(*audioProcessor.apvts.getParameter("Peak Frequency"), "Hz"),
-peakGainSlider(*audioProcessor.apvts.getParameter("Peak Gain"), "dB"),
-peakQualitySlider(*audioProcessor.apvts.getParameter("Peak Quality"), ""),
-lowCutFreqSlider(*audioProcessor.apvts.getParameter("Low-Cut Frequency"), "Hz"),
-highCutFreqSlider(*audioProcessor.apvts.getParameter("High-Cut Frequency"), "Hz"),
-lowCutSlopeSlider(*audioProcessor.apvts.getParameter("Low-Cut Slope"), "dB/Oct"),
-highCutSlopeSlider(*audioProcessor.apvts.getParameter("High-Cut Slope"), "dB/Oct"),
-
-crossoverLowSlider(*audioProcessor.apvts.getParameter("CrossoverLow"), "Hz"),
-crossoverHighSlider(*audioProcessor.apvts.getParameter("CrossoverHigh"), "Hz"),
-
-lowBandPreGainSlider(*audioProcessor.apvts.getParameter("LowBandPreGain"), "dB"),
-midBandPreGainSlider(*audioProcessor.apvts.getParameter("MidBandPreGain"), "dB"),
-highBandPreGainSlider(*audioProcessor.apvts.getParameter("HighBandPreGain"), "dB"),
-
-lowBandDriveSlider(*audioProcessor.apvts.getParameter("LowBandDrive"), ""),
-midBandDriveSlider(*audioProcessor.apvts.getParameter("MidBandDrive"), ""),
-highBandDriveSlider(*audioProcessor.apvts.getParameter("HighBandDrive"), ""),
-
-lowBandPostGainSlider(*audioProcessor.apvts.getParameter("LowBandPostGain"), "dB"),
-midBandPostGainSlider(*audioProcessor.apvts.getParameter("MidBandPostGain"), "dB"),
-highBandPostGainSlider(*audioProcessor.apvts.getParameter("HighBandPostGain"), "dB"),
-
-lowBandMixSlider(*audioProcessor.apvts.getParameter("LowBandMix"), "%"),
-midBandMixSlider(*audioProcessor.apvts.getParameter("MidBandMix"), "%"),
-highBandMixSlider(*audioProcessor.apvts.getParameter("HighBandMix"), "%"),
-
-
-responseCurveComponent(audioProcessor),
-peakFreqSliderAttachment(audioProcessor.apvts, "Peak Frequency", peakFreqSlider),
-peakGainSliderAttachment(audioProcessor.apvts, "Peak Gain", peakGainSlider),
-peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySlider),
-lowCutFreqSliderAttachment(audioProcessor.apvts, "Low-Cut Frequency", lowCutFreqSlider),
-highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutFreqSlider),
-lowCutSlopeSliderAttachment(audioProcessor.apvts,"Low-Cut Slope", lowCutSlopeSlider),
-highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider),
-
-crossoverLowSliderAttachment(audioProcessor.apvts, "CrossoverLow", crossoverLowSlider),
-crossoverHighSliderAttachment(audioProcessor.apvts, "CrossoverHigh", crossoverHighSlider),
-
-lowBandPreGainSliderAttachment(audioProcessor.apvts, "LowBandPreGain", lowBandPreGainSlider),
-midBandPreGainSliderAttachment(audioProcessor.apvts, "MidBandPreGain", midBandPreGainSlider),
-highBandPreGainSliderAttachment(audioProcessor.apvts, "HighBandPreGain", highBandPreGainSlider),
-
-lowBandDriveSliderAttachment(audioProcessor.apvts, "LowBandDrive", lowBandDriveSlider),
-midBandDriveSliderAttachment(audioProcessor.apvts, "MidBandDrive", midBandDriveSlider),
-highBandDriveSliderAttachment(audioProcessor.apvts, "HighBandDrive", highBandDriveSlider),
-
-lowBandPostGainSliderAttachment(audioProcessor.apvts, "LowBandPostGain", lowBandPostGainSlider),
-midBandPostGainSliderAttachment(audioProcessor.apvts, "MidBandPostGain", midBandPostGainSlider),
-highBandPostGainSliderAttachment(audioProcessor.apvts, "HighBandPostGain", highBandPostGainSlider),
-
-lowBandMixSliderAttachment(audioProcessor.apvts, "LowBandMix", lowBandMixSlider),
-midBandMixSliderAttachment(audioProcessor.apvts, "MidBandMix", midBandMixSlider),
-highBandMixSliderAttachment(audioProcessor.apvts, "HighBandMix", highBandMixSlider)
+_3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor(_3BandMultiEffectorAudioProcessor& p)
+    : AudioProcessorEditor(&p), audioProcessor(p),
+      peakFreqSlider(*audioProcessor.apvts.getParameter("Peak Frequency"), "Hz"),
+      peakGainSlider(*audioProcessor.apvts.getParameter("Peak Gain"), "dB"),
+      peakQualitySlider(*audioProcessor.apvts.getParameter("Peak Quality"), ""),
+      lowCutFreqSlider(*audioProcessor.apvts.getParameter("Low-Cut Frequency"), "Hz"),
+      highCutFreqSlider(*audioProcessor.apvts.getParameter("High-Cut Frequency"), "Hz"),
+      lowCutSlopeSlider(*audioProcessor.apvts.getParameter("Low-Cut Slope"), "dB/Oct"),
+      highCutSlopeSlider(*audioProcessor.apvts.getParameter("High-Cut Slope"), "dB/Oct"),
+      crossoverLowSlider(*audioProcessor.apvts.getParameter("CrossoverLow"), "Hz"),
+      crossoverHighSlider(*audioProcessor.apvts.getParameter("CrossoverHigh"), "Hz"),
+      lowBandDriveSlider(*audioProcessor.apvts.getParameter("LowBandDrive"), ""),
+      midBandDriveSlider(*audioProcessor.apvts.getParameter("MidBandDrive"), ""),
+      highBandDriveSlider(*audioProcessor.apvts.getParameter("HighBandDrive"), ""),
+      lowBandPostGainSlider(*audioProcessor.apvts.getParameter("LowBandPostGain"), "dB"),
+      midBandPostGainSlider(*audioProcessor.apvts.getParameter("MidBandPostGain"), "dB"),
+      highBandPostGainSlider(*audioProcessor.apvts.getParameter("HighBandPostGain"), "dB"),
+      lowBandMixSlider(*audioProcessor.apvts.getParameter("LowBandMix"), "%"),
+      midBandMixSlider(*audioProcessor.apvts.getParameter("MidBandMix"), "%"),
+      highBandMixSlider(*audioProcessor.apvts.getParameter("HighBandMix"), "%"),
+      responseCurveComponent(audioProcessor),
+      peakFreqSliderAttachment(audioProcessor.apvts, "Peak Frequency", peakFreqSlider),
+      peakGainSliderAttachment(audioProcessor.apvts, "Peak Gain", peakGainSlider),
+      peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySlider),
+      lowCutFreqSliderAttachment(audioProcessor.apvts, "Low-Cut Frequency", lowCutFreqSlider),
+      highCutFreqSliderAttachment(audioProcessor.apvts, "High-Cut Frequency", highCutFreqSlider),
+      lowCutSlopeSliderAttachment(audioProcessor.apvts, "Low-Cut Slope", lowCutSlopeSlider),
+      highCutSlopeSliderAttachment(audioProcessor.apvts, "High-Cut Slope", highCutSlopeSlider),
+      crossoverLowSliderAttachment(audioProcessor.apvts, "CrossoverLow", crossoverLowSlider),
+      crossoverHighSliderAttachment(audioProcessor.apvts, "CrossoverHigh", crossoverHighSlider),
+      lowBandDriveSliderAttachment(audioProcessor.apvts, "LowBandDrive", lowBandDriveSlider),
+      midBandDriveSliderAttachment(audioProcessor.apvts, "MidBandDrive", midBandDriveSlider),
+      highBandDriveSliderAttachment(audioProcessor.apvts, "HighBandDrive", highBandDriveSlider),
+      lowBandPostGainSliderAttachment(audioProcessor.apvts, "LowBandPostGain", lowBandPostGainSlider),
+      midBandPostGainSliderAttachment(audioProcessor.apvts, "MidBandPostGain", midBandPostGainSlider),
+      highBandPostGainSliderAttachment(audioProcessor.apvts, "HighBandPostGain", highBandPostGainSlider),
+      lowBandMixSliderAttachment(audioProcessor.apvts, "LowBandMix", lowBandMixSlider),
+      midBandMixSliderAttachment(audioProcessor.apvts, "MidBandMix", midBandMixSlider),
+      highBandMixSliderAttachment(audioProcessor.apvts, "HighBandMix", highBandMixSlider)
 {
     // Labels for Peak Frequency Slider
     peakFreqSlider.labels.add({0.f, "20"});
@@ -489,84 +470,82 @@ highBandMixSliderAttachment(audioProcessor.apvts, "HighBandMix", highBandMixSlid
     // Labels for High-Cut Slope Slider
     highCutSlopeSlider.labels.add({0.f, "12"});
     highCutSlopeSlider.labels.add({1.f, "48"});
-    
+
     // Labels for Crossover Low Slider
     crossoverLowSlider.labels.add({0.f, "20"});
     crossoverLowSlider.labels.add({1.f, "5k"});
-    
+
     // Labels for Crossover High Slider
     crossoverHighSlider.labels.add({0.f, "5k"});
     crossoverHighSlider.labels.add({1.f, "20k"});
-    
-    // Labels for Low Band Pre-Gain Slider
-    lowBandPreGainSlider.labels.add({0.f, "-40"});
-    lowBandPreGainSlider.labels.add({1.f, "20"});
-    
-    // Labels for Mid Band Pre-Gain Slider
-    midBandPreGainSlider.labels.add({0.f, "-40"});
-    midBandPreGainSlider.labels.add({1.f, "20"});
-    
-    // Labels for High Band Pre-Gain Slider
-    highBandPreGainSlider.labels.add({0.f, "-40"});
-    highBandPreGainSlider.labels.add({1.f, "20"});
-    
+
     // Labels for Low Band Drive Slider
     lowBandDriveSlider.labels.add({0.f, "0"});
     lowBandDriveSlider.labels.add({1.f, "50"});
-    
+
     // Labels for Mid Band Drive Slider
     midBandDriveSlider.labels.add({0.f, "0"});
     midBandDriveSlider.labels.add({1.f, "50"});
-    
+
     // Labels for High Band Drive Slider
     highBandDriveSlider.labels.add({0.f, "0"});
     highBandDriveSlider.labels.add({1.f, "50"});
-    
+
     // Labels for Low Band Post-Gain Slider
     lowBandPostGainSlider.labels.add({0.f, "-40"});
     lowBandPostGainSlider.labels.add({1.f, "20"});
-    
+
     // Labels for Mid Band Post-Gain Slider
     midBandPostGainSlider.labels.add({0.f, "-40"});
     midBandPostGainSlider.labels.add({1.f, "20"});
-    
+
     // Labels for High Band Post-Gain Slider
     highBandPostGainSlider.labels.add({0.f, "-40"});
     highBandPostGainSlider.labels.add({1.f, "20"});
-    
+
     // Labels for Low Band Mix Slider
     lowBandMixSlider.labels.add({0.f, "0"});
     lowBandMixSlider.labels.add({1.f, "100"});
-    
+
     // Labels for Mid Band Mix Slider
     midBandMixSlider.labels.add({0.f, "0"});
     midBandMixSlider.labels.add({1.f, "100"});
-    
+
     // Labels for High Band Mix Slider
     highBandMixSlider.labels.add({0.f, "0"});
     highBandMixSlider.labels.add({1.f, "100"});
-    
+
+    // Add distortion type options to combo boxes
     lowDistortionTypeComboBox.addItem("Soft Clipping", 1);
     lowDistortionTypeComboBox.addItem("Hard Clipping", 2);
-    
+
     midDistortionTypeComboBox.addItem("Soft Clipping", 1);
     midDistortionTypeComboBox.addItem("Hard Clipping", 2);
-    
+
     highDistortionTypeComboBox.addItem("Soft Clipping", 1);
     highDistortionTypeComboBox.addItem("Hard Clipping", 2);
-    
+
+    // Set custom look and feel for combo boxes
     lowDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
     midDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
     highDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
-    
-    for (auto* comp: getComps())
+
+    // Create ComboBoxAttachments to bind combo boxes to parameters
+    lowDistortionTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        audioProcessor.apvts, "LowBandType", lowDistortionTypeComboBox);
+    midDistortionTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        audioProcessor.apvts, "MidBandType", midDistortionTypeComboBox);
+    highDistortionTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+        audioProcessor.apvts, "HighBandType", highDistortionTypeComboBox);
+
+    // Add all components to the editor
+    for (auto* comp : getComps())
     {
         addAndMakeVisible(comp);
     }
-    
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize (500, 900);
+
+    // Set the editor's size
+    setSize(500, 900);
 }
 
 void setDistortionComboBoxBounds(juce::Rectangle<int> bounds, int comboBoxHeight,
@@ -667,14 +646,10 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     auto highBandArea = bandArea; // Remaining space for high band
     
     // Determine equal height for each slider within the band area
-    int numSliders = 4; // Pre-Gain, Drive, Post-Gain, Mix
+    int numSliders = 3; // Drive, Post-Gain, Mix
     int sliderHeight = lowBandArea.getHeight() / numSliders;
 
     // Assign sliders evenly within their respective areas
-    lowBandPreGainSlider.setBounds(lowBandArea.removeFromTop(sliderHeight));
-    midBandPreGainSlider.setBounds(midBandArea.removeFromTop(sliderHeight));
-    highBandPreGainSlider.setBounds(highBandArea.removeFromTop(sliderHeight));
-
     lowBandDriveSlider.setBounds(lowBandArea.removeFromTop(sliderHeight));
     midBandDriveSlider.setBounds(midBandArea.removeFromTop(sliderHeight));
     highBandDriveSlider.setBounds(highBandArea.removeFromTop(sliderHeight));
@@ -686,7 +661,6 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     lowBandMixSlider.setBounds(lowBandArea);
     midBandMixSlider.setBounds(midBandArea);
     highBandMixSlider.setBounds(highBandArea);
-    
 }
 
 std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps()
@@ -702,9 +676,6 @@ std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps(
         &highCutSlopeSlider,
         &crossoverLowSlider,
         &crossoverHighSlider,
-        &lowBandPreGainSlider,
-        &midBandPreGainSlider,
-        &highBandPreGainSlider,
         &lowBandDriveSlider,
         &midBandDriveSlider,
         &highBandDriveSlider,
