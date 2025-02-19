@@ -329,11 +329,18 @@ void _3BandMultiEffectorAudioProcessor::updateFilters()
     updateHighCutFilters(chainSettings);
 }
 
-void CrossoverFilters::prepare(const juce::dsp::ProcessSpec& spec) {
+void CrossoverFilters::prepare(const juce::dsp::ProcessSpec& spec)
+{
     lowPassL.prepare(spec);
     highPassM.prepare(spec);
     lowPassM.prepare(spec);
     highPassH.prepare(spec);
+
+    // Set each filter's type:
+    lowPassL.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
+    highPassM.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
+    lowPassM.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
+    highPassH.setType(juce::dsp::LinkwitzRileyFilterType::highpass);
 }
 
 void CrossoverFilters::update(float crossoverLow, float crossoverHigh) {
@@ -377,50 +384,68 @@ void _3BandMultiEffectorAudioProcessor::processBand(
 {
     auto settings = getChainSettings(apvts);
     BandSettings* bandSettings = nullptr;
-
-    // Get band-specific settings
-    switch (bandIndex) {
+    switch (bandIndex)
+    {
         case 0: bandSettings = &settings.lowBand; break;
         case 1: bandSettings = &settings.midBand; break;
         case 2: bandSettings = &settings.highBand; break;
         default: jassertfalse; break;
     }
+    if (!bandSettings)
+        return;
 
-    if (!bandSettings) return;
-
-    // Copy EQ'd signal to temp buffer
     tempBuffers[bandIndex].makeCopyOf(eqBuffer);
 
-    // Process left channel
-    auto leftBlock = juce::dsp::AudioBlock<float>(tempBuffers[bandIndex]).getSingleChannelBlock(0);
+    if (bandIndex == 1) // Mid band: chain both high-pass and low-pass filters
     {
-        juce::dsp::ProcessContextReplacing<float> context(leftBlock);
-        leftFilter.process(context);
+        // Process left channel
+        auto leftBlock = juce::dsp::AudioBlock<float>(tempBuffers[bandIndex]).getSingleChannelBlock(0);
+        {
+            juce::dsp::ProcessContextReplacing<float> context(leftBlock);
+            leftCrossover.highPassM.process(context); // High-pass (cutoff at crossoverLow)
+            leftCrossover.lowPassM.process(context);  // Low-pass (cutoff at crossoverHigh)
+            if (bandSettings->drive > 0.0f)
+                leftDistortion.process(context);
+        }
 
-        // Bypass distortion if drive is 0
-        if (bandSettings->drive > 0.0f) {
-            leftDistortion.process(context);
+        // Process right channel
+        auto rightBlock = juce::dsp::AudioBlock<float>(tempBuffers[bandIndex]).getSingleChannelBlock(1);
+        {
+            juce::dsp::ProcessContextReplacing<float> context(rightBlock);
+            rightCrossover.highPassM.process(context);
+            rightCrossover.lowPassM.process(context);
+
+            if (bandSettings->drive > 0.0f)
+                rightDistortion.process(context);
+        }
+    }
+    else // Low and high bands
+    {
+        // Process left channel
+        auto leftBlock = juce::dsp::AudioBlock<float>(tempBuffers[bandIndex]).getSingleChannelBlock(0);
+        {
+            juce::dsp::ProcessContextReplacing<float> context(leftBlock);
+            leftFilter.process(context);
+            if (bandSettings->drive > 0.0f)
+                leftDistortion.process(context);
+        }
+
+        // Process right channel
+        auto rightBlock = juce::dsp::AudioBlock<float>(tempBuffers[bandIndex]).getSingleChannelBlock(1);
+        {
+            juce::dsp::ProcessContextReplacing<float> context(rightBlock);
+            rightFilter.process(context);
+            if (bandSettings->drive > 0.0f)
+                rightDistortion.process(context);
         }
     }
 
-    // Process right channel
-    auto rightBlock = juce::dsp::AudioBlock<float>(tempBuffers[bandIndex]).getSingleChannelBlock(1);
-    {
-        juce::dsp::ProcessContextReplacing<float> context(rightBlock);
-        rightFilter.process(context);
-
-        // Bypass distortion if drive is 0
-        if (bandSettings->drive > 0.0f) {
-            rightDistortion.process(context);
-        }
-    }
-
-    // Calculate mix factors
+    // Apply dry/wet mix
     const float wetGain = bandSettings->mix * 0.01f;
     const float dryGain = 1.0f - wetGain;
 
-    // Apply dry/wet mix
-    for (int ch = 0; ch < output.getNumChannels(); ++ch) {
+    for (int ch = 0; ch < output.getNumChannels(); ++ch)
+    {
         output.addFrom(ch, 0,
                        eqBuffer, ch, 0, output.getNumSamples(), // Dry signal
                        dryGain);
