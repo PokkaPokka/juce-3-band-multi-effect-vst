@@ -184,6 +184,19 @@ juce::String RotarySliderWithLabels::getDisplayString() const
     }
 }
 
+void _3BandMultiEffectorAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
+{
+    if (slider == &crossoverLowSlider)
+    {
+        if (crossoverLowSlider.getValue() > crossoverHighSlider.getValue())
+            crossoverHighSlider.setValue(crossoverLowSlider.getValue(), juce::dontSendNotification);
+    }
+    else if (slider == &crossoverHighSlider)
+    {
+        if (crossoverHighSlider.getValue() < crossoverLowSlider.getValue())
+            crossoverLowSlider.setValue(crossoverHighSlider.getValue(), juce::dontSendNotification);
+    }
+}
 //==============================================================================
 ResponseCurveComponent::ResponseCurveComponent(_3BandMultiEffectorAudioProcessor& p): audioProcessor(p),
 leftPathProducer(audioProcessor.leftChannelFifo),
@@ -537,12 +550,17 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
         audioProcessor.apvts, "MidBandType", midDistortionTypeComboBox);
     highDistortionTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
         audioProcessor.apvts, "HighBandType", highDistortionTypeComboBox);
+    
+    crossoverLowSlider.addListener(this);
+    crossoverHighSlider.addListener(this);
 
     // Add all components to the editor
     for (auto* comp : getComps())
     {
         addAndMakeVisible(comp);
     }
+    
+    addAndMakeVisible(crossoverDivider);
 
     // Set the editor's size
     setSize(500, 900);
@@ -611,9 +629,16 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     peakGainSlider.setBounds(bounds.removeFromTop(bounds.getHeight() * 0.5));
     peakQualitySlider.setBounds(bounds);
     
+    auto gap = 25;
+    
+    auto dividerArea = getLocalBounds();
+    dividerArea.setTop(bounds.getBottom());
+    crossoverDivider.setBounds(dividerArea.removeFromTop(gap));
+    
     // Layout the crossover sliders
     auto crossoverArea = getLocalBounds();
-    crossoverArea.setTop(bounds.getBottom());
+    crossoverArea.setTop(bounds.getBottom() + gap / 2);
+    
     crossoverArea.setHeight(bounds.getHeight() * 1.3);
     crossoverLowSlider.setBounds(crossoverArea.removeFromLeft(crossoverArea.getWidth() * 0.5));
     crossoverHighSlider.setBounds(crossoverArea);
@@ -639,6 +664,7 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     // Layout the band controls
     auto bandArea = getLocalBounds();
     bandArea.setTop(distortionBounds.getBottom() + 10);
+    bandArea.setBottom(getLocalBounds().getBottom() - 20);
 
     auto bandWidth = bandArea.getWidth() / 3;
     auto lowBandArea = bandArea.removeFromLeft(bandWidth);

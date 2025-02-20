@@ -280,10 +280,25 @@ private:
     PathProducer leftPathProducer, rightPathProducer;
 };
 
+class DividerComponent : public juce::Component
+{
+public:
+    DividerComponent() {}
+    ~DividerComponent() override {}
+
+    void paint(juce::Graphics& g) override
+    {
+        // Set the divider color and draw a horizontal line across the component.
+        g.setColour(juce::Colour(170, 185, 154).brighter());
+        auto bounds = getLocalBounds().toFloat();
+        g.drawLine(bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY(), 1.0f);
+    }
+};
+
 //==============================================================================
 /**
 */
-class _3BandMultiEffectorAudioProcessorEditor  : public juce::AudioProcessorEditor
+class _3BandMultiEffectorAudioProcessorEditor  : public juce::AudioProcessorEditor, public juce::Slider::Listener
 {
 public:
     _3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor&);
@@ -291,6 +306,7 @@ public:
 
     //==============================================================================
     void paint (juce::Graphics&) override;
+    void sliderValueChanged(juce::Slider* slider) override;
     void resized() override;
     
 private:
@@ -328,6 +344,7 @@ private:
                         highBandMixSlider;
     
     ResponseCurveComponent responseCurveComponent;
+    DividerComponent crossoverDivider;
     
     // Alias to make this extra name looks cleaner
     using APVTS = juce::AudioProcessorValueTreeState;
