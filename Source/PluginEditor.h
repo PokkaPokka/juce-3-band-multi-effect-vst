@@ -267,13 +267,14 @@ struct ResponseCurveComponent: juce::Component, juce::AudioProcessorParameter::L
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void updateChain();
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     _3BandMultiEffectorAudioProcessor& audioProcessor;
     juce::Atomic<bool> parametersChanged{false};
     MonoChain monoChain;
-    void updateChain();
+    CrossoverFilters crossoverFilters;
     juce::Image background;
     juce::Rectangle<int> getRenderArea();
     

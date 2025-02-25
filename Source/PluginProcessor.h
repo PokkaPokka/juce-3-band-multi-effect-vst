@@ -229,6 +229,9 @@ struct CrossoverFilters {
     juce::dsp::LinkwitzRileyFilter<float> lowPassL, highPassM, lowPassM, highPassH;
     void prepare(const juce::dsp::ProcessSpec& spec);
     void update(float crossoverLow, float crossoverHigh);
+    std::array<float, 2> getCutoffFrequencies() const {
+        return { lowPassL.getCutoffFrequency(), highPassH.getCutoffFrequency() };
+    }
 };
 
 // A reference to the TreeState, which manages and connects parameter states in

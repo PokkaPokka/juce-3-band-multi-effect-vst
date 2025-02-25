@@ -150,7 +150,7 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
                                                param->getParameterID() == "Peak Gain" ||
                                                param->getParameterID() == "Peak Quality")
                                               ? 7
-                                              : 3));
+                                              : 5));
 
         g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);    }
 }
@@ -188,13 +188,19 @@ void _3BandMultiEffectorAudioProcessorEditor::sliderValueChanged(juce::Slider* s
 {
     if (slider == &crossoverLowSlider)
     {
-        if (crossoverLowSlider.getValue() > crossoverHighSlider.getValue())
-            crossoverHighSlider.setValue(crossoverLowSlider.getValue(), juce::dontSendNotification);
+        if (crossoverLowSlider.getValue() > crossoverHighSlider.getValue()) {
+            crossoverHighSlider.setValue(crossoverLowSlider.getValue(), juce::sendNotificationSync);
+            responseCurveComponent.updateChain();
+            responseCurveComponent.repaint();
+        }
     }
     else if (slider == &crossoverHighSlider)
     {
-        if (crossoverHighSlider.getValue() < crossoverLowSlider.getValue())
-            crossoverLowSlider.setValue(crossoverHighSlider.getValue(), juce::dontSendNotification);
+        if (crossoverHighSlider.getValue() < crossoverLowSlider.getValue()) {
+            crossoverLowSlider.setValue(crossoverHighSlider.getValue(), juce::sendNotificationSync);
+            responseCurveComponent.updateChain();
+            responseCurveComponent.repaint();
+        }
     }
 }
 //==============================================================================
@@ -285,38 +291,40 @@ void ResponseCurveComponent::updateChain()
     
     updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
     updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
+    
+    crossoverFilters.update(chainSettings.crossoverLow, chainSettings.crossoverHigh);
 }
 
-void ResponseCurveComponent::paint (juce::Graphics& g)
+void ResponseCurveComponent::paint(juce::Graphics& g)
 {
     using namespace juce;
-    
+
     auto bounds = getLocalBounds();
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll(Colour(114, 125, 115).darker());
-    
-    // Create an inner shadow effect
-    DropShadow shadow(Colour(114, 125, 115), 28, Point<int>(0, 0)); // Semi-transparent black shadow
+
+    // Inner shadow effect
+    DropShadow shadow(Colour(114, 125, 115), 28, Point<int>(0, 0));
     Image shadowImage(Image::ARGB, bounds.getWidth(), bounds.getHeight(), true);
-    
     Graphics shadowGraphics(shadowImage);
     shadowGraphics.setColour(Colours::transparentWhite);
     shadowGraphics.fillAll();
-    shadow.drawForRectangle(shadowGraphics, bounds); // Draw shadow slightly inside
-    g.setOpacity(0.9f); // Control shadow intensity
+    shadow.drawForRectangle(shadowGraphics, bounds);
+    g.setOpacity(0.9f);
     g.drawImageAt(shadowImage, bounds.getX(), bounds.getY());
-    
+
     g.drawImage(background, getLocalBounds().toFloat());
 
     auto responseArea = getRenderArea();
     auto w = responseArea.getWidth();
-    
+
+    // Existing filter magnitude calculation (unchanged)
     auto& lowcut = monoChain.get<ChainPositions::LowCut>();
     auto& peak = monoChain.get<ChainPositions::Peak>();
     auto& highcut = monoChain.get<ChainPositions::HighCut>();
-    
+    auto& lowBandLine = crossoverFilters.getCutoffFrequencies()[0];
+    auto& highBandLine = crossoverFilters.getCutoffFrequencies()[1];
     auto sampleRate = audioProcessor.getSampleRate();
-    
+
     std::vector<double> mags;
     mags.resize(w);
     for (int i = 0; i < w; ++i) {
@@ -325,58 +333,56 @@ void ResponseCurveComponent::paint (juce::Graphics& g)
         if (!monoChain.isBypassed<ChainPositions::Peak>()) {
             mag *= peak.coefficients->getMagnitudeForFrequency(freq, sampleRate);
         }
-        if (!lowcut.isBypassed<0>()) {
-            mag *= lowcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        if (!lowcut.isBypassed<1>()) {
-            mag *= lowcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        if (!lowcut.isBypassed<2>()) {
-            mag *= lowcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        if (!lowcut.isBypassed<3>()) {
-            mag *= lowcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        if (!highcut.isBypassed<0>()) {
-            mag *= highcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        if (!highcut.isBypassed<1>()) {
-            mag *= highcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        if (!highcut.isBypassed<2>()) {
-            mag *= highcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        if (!highcut.isBypassed<3>()) {
-            mag *= highcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        }
-        
+        // (Rest of magnitude calculation remains unchanged)
+        if (!lowcut.isBypassed<0>()) mag *= lowcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!lowcut.isBypassed<1>()) mag *= lowcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!lowcut.isBypassed<2>()) mag *= lowcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!lowcut.isBypassed<3>()) mag *= lowcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!highcut.isBypassed<0>()) mag *= highcut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!highcut.isBypassed<1>()) mag *= highcut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!highcut.isBypassed<2>()) mag *= highcut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
+        if (!highcut.isBypassed<3>()) mag *= highcut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
         mags[i] = Decibels::gainToDecibels(mag);
     }
-    
+
+    // Draw the response curve (unchanged)
     Path responseCurve;
     const double outputMin = responseArea.getBottom();
     const double outputMax = responseArea.getY();
     auto map = [outputMin, outputMax](double input) {
         return jmap(input, -24.0, 24.0, outputMin, outputMax);
     };
-    
     responseCurve.startNewSubPath(responseArea.getX(), map(mags.front()));
-    
     for (size_t i = 1; i < mags.size(); ++i) {
-        responseCurve.lineTo(responseArea.getX() + i, map((mags[i])));
+        responseCurve.lineTo(responseArea.getX() + i, map(mags[i]));
     }
-    
+
+    // Draw FFT paths
     auto leftChannelFFTPath = leftPathProducer.getPath();
     auto rightChannelFFTPath = rightPathProducer.getPath();
-    
     g.setColour(Colour(208, 221, 208).withAlpha(0.7f));
     g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
-    
     g.setColour(Colour(188, 159, 139).withAlpha(0.7f));
     g.strokePath(rightChannelFFTPath, PathStrokeType(1.f));
-    
+
+    // Draw the response curve
     g.setColour(Colour(240, 240, 215));
     g.strokePath(responseCurve, PathStrokeType(2.f));
+
+    // *** Draw crossover lines ***
+    g.setColour(Colour(240, 240, 215).withAlpha(0.7f));
+    auto mapFreqToX = [&](float freq) {
+        auto normX = mapFromLog10(freq, 20.f, 20000.f); // Map frequency to normalized X (0 to 1)
+        return responseArea.getX() + normX * w;         // Scale to response area width
+    };
+
+    // Draw low crossover line
+    float lowX = mapFreqToX(lowBandLine);
+    g.fillRect(Rectangle<float> (lowX, 0, 2.0f, responseArea.getBottom() * 1.1));
+
+    // Draw high crossover line
+    float highX = mapFreqToX(highBandLine);
+    g.fillRect(Rectangle<float> (highX, 0, 2.0f, responseArea.getBottom() * 1.1));
 }
 
 void ResponseCurveComponent::resized()
@@ -563,7 +569,7 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
     addAndMakeVisible(crossoverDivider);
 
     // Set the editor's size
-    setSize(500, 900);
+    setSize(500, 850);
 }
 
 void setDistortionComboBoxBounds(juce::Rectangle<int> bounds, int comboBoxHeight,
