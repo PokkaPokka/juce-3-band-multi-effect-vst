@@ -370,19 +370,29 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
     g.strokePath(responseCurve, PathStrokeType(2.f));
 
     // *** Draw crossover lines ***
-    g.setColour(Colour(240, 240, 215).withAlpha(0.7f));
     auto mapFreqToX = [&](float freq) {
         auto normX = mapFromLog10(freq, 20.f, 20000.f); // Map frequency to normalized X (0 to 1)
         return responseArea.getX() + normX * w;         // Scale to response area width
     };
 
-    // Draw low crossover line
+    // Draw low crossover area
     float lowX = mapFreqToX(lowBandLine);
+    g.setColour(Colour(240, 240, 215).withAlpha(0.6f));
     g.fillRect(Rectangle<float> (lowX, 0, 2.0f, responseArea.getBottom() * 1.1));
-
-    // Draw high crossover line
+    g.setColour(Colour(217, 157, 129).withAlpha(0.15f));
+    g.fillRect(Rectangle<float> (0, 0, lowX, responseArea.getBottom() * 1.1));
+    
+    
+    // Draw high crossover area
     float highX = mapFreqToX(highBandLine);
+    g.setColour(Colour(240, 240, 215).withAlpha(0.6f));
     g.fillRect(Rectangle<float> (highX, 0, 2.0f, responseArea.getBottom() * 1.1));
+    g.setColour(Colour(255, 232, 182).withAlpha(0.15f));
+    g.fillRect(Rectangle<float> (highX, 0, getRenderArea().getWidth() - highX, responseArea.getBottom() * 1.1));
+    
+    // Draw mid crossover area
+    g.setColour(Colour(162, 123, 92).withAlpha(0.15f));
+    g.fillRect(Rectangle<float> (0, 0, highX, responseArea.getBottom() * 1.1));
 }
 
 void ResponseCurveComponent::resized()
