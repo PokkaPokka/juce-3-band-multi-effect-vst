@@ -384,14 +384,15 @@ public:
 private:
     MonoChain leftChain, rightChain;
     
+    juce::dsp::Oversampling<float> oversampler{2, 1, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR};
+    
     // Update the peak filter coefficients (frequency, gain, and quality factor)
     // based on user settings stored in ChainSettings
-    void updatePeakFilter(const ChainSettings& chainSettings);
+    void updatePeakFilter(const ChainSettings& chainSettings, float sampleRate);
     
-    void updateLowCutFilters(const ChainSettings& chainSettings);
-    void updateHighCutFilters(const ChainSettings& chainSettings);
+    void updateLowCutFilters(const ChainSettings& chainSettings, float sampleRate);
+    void updateHighCutFilters(const ChainSettings& chainSettings, float sampleRate);
     void updateFilters();
-    void updateDistortion(juce::AudioBuffer<float>&);
     void updateBandDistortion(Distortion<float>& distortionProcessor, const BandSettings& bandSettings);
     void processBand(
         const juce::AudioBuffer<float>& eqBuffer,
