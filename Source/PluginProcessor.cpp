@@ -91,38 +91,43 @@ void _3BandMultiEffectorAudioProcessor::changeProgramName (int index, const juce
 }
 
 //==============================================================================
-void _3BandMultiEffectorAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void _3BandMultiEffectorAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    // Create a ProcessSpec object to hold processing specifications
     juce::dsp::ProcessSpec spec;
-    
-    // buffer size
     spec.maximumBlockSize = samplesPerBlock;
-    spec.numChannels = 1;
+    spec.numChannels = 1; // Mono processing for each chain
     spec.sampleRate = sampleRate;
-    
-    // Prepare both cahnnels processing chain using the specified config
-    leftChain.prepare(spec);
-    rightChain.prepare(spec);
-    
-    // Get current filter settings from the AudioProcessorValueTreeState (sliders)
-    auto chainSettings = getChainSettings(apvts);
 
-    updateFilters();
+    // Initialize oversampler
+    oversampler.initProcessing(samplesPerBlock);
+    auto oversampledSampleRate = sampleRate * oversampler.getOversamplingFactor();
     
+    // Prepare spec for oversampled rate
+    juce::dsp::ProcessSpec oversampledSpec = spec;
+    oversampledSpec.sampleRate = oversampledSampleRate;
+    oversampledSpec.maximumBlockSize = samplesPerBlock * oversampler.getOversamplingFactor();
+
+    // Prepare chains with oversampled spec
+    leftChain.prepare(oversampledSpec);
+    rightChain.prepare(oversampledSpec);
+
     // Prepare crossovers
-    leftCrossover.prepare(spec);
-    rightCrossover.prepare(spec);
-    
+    leftCrossover.prepare(oversampledSpec);
+    rightCrossover.prepare(oversampledSpec);
+
     // Prepare distortion bands
-    for (auto& band : leftBands) band.prepare(spec);
-    for (auto& band : rightBands) band.prepare(spec);
-    
-    // Prepare temp buffers
-    for (auto& buf : tempBuffers) buf.setSize(2, samplesPerBlock);
-    
+    for (auto& band : leftBands) band.prepare(oversampledSpec);
+    for (auto& band : rightBands) band.prepare(oversampledSpec);
+
+    // Prepare temp buffers for oversampled block size
+    for (auto& buf : tempBuffers)
+        buf.setSize(2, samplesPerBlock * oversampler.getOversamplingFactor());
+
+    // Prepare FIFO buffers with original sample rate
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
+
+    updateFilters();
 }
 
 void _3BandMultiEffectorAudioProcessor::releaseResources()
@@ -164,33 +169,33 @@ void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& b
     auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // Avoid feedback by clearing unused output channels
+    // Clear unused output channels
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
-    
-    // Update filters and parameters
-    updateFilters();
-    
-    // Create an AudioBlock wrapper around the buffer for processing audio data in a flexible way
+
+    // Oversample the input buffer
     juce::dsp::AudioBlock<float> block(buffer);
-    
-    // Extract the single-channel blocks for the left and right audio channerls from the AudioBlock
-    auto leftBlock = block.getSingleChannelBlock(0);
-    auto rightBlock = block.getSingleChannelBlock(1);
-    
-    // Create ProcessContextReplacing objects for both channels, representing the audio data to be processed
+    auto oversampledBlock = oversampler.processSamplesUp(block);
+
+    // Update filters and parameters (at oversampled rate)
+    updateFilters();
+
+    // Process left and right channels at oversampled rate
+    auto leftBlock = oversampledBlock.getSingleChannelBlock(0);
+    auto rightBlock = oversampledBlock.getSingleChannelBlock(1);
+
     juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
     juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
-    
+
     leftChain.process(leftContext);
     rightChain.process(rightContext);
-    
+
     auto chainSettings = getChainSettings(apvts);
-    
+
     // Update crossovers
     leftCrossover.update(chainSettings.crossoverLow, chainSettings.crossoverHigh);
     rightCrossover.update(chainSettings.crossoverLow, chainSettings.crossoverHigh);
-    
+
     // Update band distortions
     updateBandDistortion(leftBands[0], chainSettings.lowBand);
     updateBandDistortion(leftBands[1], chainSettings.midBand);
@@ -198,18 +203,31 @@ void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& b
     updateBandDistortion(rightBands[0], chainSettings.lowBand);
     updateBandDistortion(rightBands[1], chainSettings.midBand);
     updateBandDistortion(rightBands[2], chainSettings.highBand);
-    
-    // Save EQ'd signal
-    juce::AudioBuffer<float> eqBuffer(buffer.getNumChannels(), buffer.getNumSamples());
-    eqBuffer.makeCopyOf(buffer);
-    buffer.clear();
-    
-    // Process each band
-    processBand(eqBuffer, buffer, 0, leftCrossover.lowPassL, rightCrossover.lowPassL, leftBands[0], rightBands[0]);
-    processBand(eqBuffer, buffer, 1, leftCrossover.highPassM, rightCrossover.highPassM, leftBands[1], rightBands[1]);
-    processBand(eqBuffer, buffer, 2, leftCrossover.highPassH, rightCrossover.highPassH, leftBands[2], rightBands[2]);
 
-    // Update FIFO buffers for visualization
+    // Convert oversampledBlock to AudioBuffer for EQ'd signal
+    juce::AudioBuffer<float> eqBuffer(oversampledBlock.getNumChannels(), oversampledBlock.getNumSamples());
+    eqBuffer.copyFrom(0, 0, oversampledBlock.getChannelPointer(0), oversampledBlock.getNumSamples());
+    eqBuffer.copyFrom(1, 0, oversampledBlock.getChannelPointer(1), oversampledBlock.getNumSamples());
+
+    // Create an output AudioBuffer for band processing
+    juce::AudioBuffer<float> outputBuffer(oversampledBlock.getNumChannels(), oversampledBlock.getNumSamples());
+    outputBuffer.clear();
+
+    // Process each band at oversampled rate
+    processBand(eqBuffer, outputBuffer, 0, leftCrossover.lowPassL, rightCrossover.lowPassL, leftBands[0], rightBands[0]);
+    processBand(eqBuffer, outputBuffer, 1, leftCrossover.highPassM, rightCrossover.highPassM, leftBands[1], rightBands[1]);
+    processBand(eqBuffer, outputBuffer, 2, leftCrossover.highPassH, rightCrossover.highPassH, leftBands[2], rightBands[2]);
+
+    // Create an AudioBlock from the outputBuffer to match the oversampledBlock type
+    juce::dsp::AudioBlock<float> outputBlock(outputBuffer);
+
+    // Copy the processed output from outputBlock to oversampledBlock
+    oversampledBlock.copyFrom(outputBlock);
+
+    // Downsample back to original rate
+    oversampler.processSamplesDown(block);
+
+    // Update FIFO buffers with the downsampled buffer for visualization
     leftChannelFifo.update(buffer);
     rightChannelFifo.update(buffer);
 }
@@ -287,9 +305,9 @@ Coefficients makePeakFilter(const ChainSettings& chainSettings, double sampleRat
     return juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, chainSettings.peakFreq, chainSettings.peakQuality, juce::Decibels::decibelsToGain(chainSettings.peakGainInDeciibels));
 }
 
-void _3BandMultiEffectorAudioProcessor::updatePeakFilter(const ChainSettings &chainSettings)
+void _3BandMultiEffectorAudioProcessor::updatePeakFilter(const ChainSettings &chainSettings, float sampleRate)
 {
-    auto peakCoefficients = makePeakFilter(chainSettings, getSampleRate());
+    auto peakCoefficients = makePeakFilter(chainSettings, sampleRate);
     updateCoefficients(leftChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
     updateCoefficients(rightChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
 }
@@ -299,9 +317,9 @@ void updateCoefficients(Coefficients &old, const Coefficients &replacements)
     *old = *replacements;
 }
 
-void _3BandMultiEffectorAudioProcessor::updateLowCutFilters(const ChainSettings &chainSettings)
+void _3BandMultiEffectorAudioProcessor::updateLowCutFilters(const ChainSettings &chainSettings, float sampleRate)
 {
-    auto lowCutCoefficient = makeLowCutFilter(chainSettings, getSampleRate());
+    auto lowCutCoefficient = makeLowCutFilter(chainSettings, sampleRate);
     
     auto& leftLowCut = leftChain.get<ChainPositions::LowCut>();
     auto& rightLowCut = rightChain.get<ChainPositions::LowCut>();
@@ -310,9 +328,9 @@ void _3BandMultiEffectorAudioProcessor::updateLowCutFilters(const ChainSettings 
     updateCutFilter(rightLowCut, lowCutCoefficient, chainSettings.lowCutSlope);
 }
 
-void _3BandMultiEffectorAudioProcessor::updateHighCutFilters(const ChainSettings &chainSettings)
+void _3BandMultiEffectorAudioProcessor::updateHighCutFilters(const ChainSettings &chainSettings, float sampleRate)
 {
-    auto highCutCoefficient = makeHighCutFilter(chainSettings, getSampleRate());
+    auto highCutCoefficient = makeHighCutFilter(chainSettings, sampleRate);
 
     auto& leftHighCut = leftChain.get<ChainPositions::HighCut>();
     auto& rightHighCut = rightChain.get<ChainPositions::HighCut>();
@@ -324,9 +342,10 @@ void _3BandMultiEffectorAudioProcessor::updateHighCutFilters(const ChainSettings
 void _3BandMultiEffectorAudioProcessor::updateFilters()
 {
     auto chainSettings = getChainSettings(apvts);
-    updateLowCutFilters(chainSettings);
-    updatePeakFilter(chainSettings);
-    updateHighCutFilters(chainSettings);
+    auto oversampledSampleRate = getSampleRate() * oversampler.getOversamplingFactor();
+    updateLowCutFilters(chainSettings, oversampledSampleRate);
+    updatePeakFilter(chainSettings, oversampledSampleRate);
+    updateHighCutFilters(chainSettings, oversampledSampleRate);
 }
 
 void CrossoverFilters::prepare(const juce::dsp::ProcessSpec& spec)
