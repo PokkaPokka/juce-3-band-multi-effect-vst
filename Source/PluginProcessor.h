@@ -154,7 +154,8 @@ enum Slope
 enum DistortionType
 {
     SoftClipping,
-    HardClipping
+    HardClipping,
+    ArcTan
 };
 
 struct BandSettings {

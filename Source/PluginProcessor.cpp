@@ -5,9 +5,11 @@
 
   ==============================================================================
 */
+#define _USE_MATH_DEFINES
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <math.h>
 
 //==============================================================================
 _3BandMultiEffectorAudioProcessor::_3BandMultiEffectorAudioProcessor()
@@ -384,6 +386,9 @@ void _3BandMultiEffectorAudioProcessor::updateBandDistortion(
         case DistortionType::HardClipping:
             distortionProcessor.setWaveshaperFunction([](float x) { return juce::jlimit (float (-0.1), float (0.1), x); });
             break;
+        case DistortionType::ArcTan:
+            distortionProcessor.setWaveshaperFunction([](float x) -> float { return 2 / M_PI * std::atan(x); });
+            break;
         default:
             distortionProcessor.setWaveshaperFunction([](float x) { return std::tanh(x); });
             break;
@@ -519,6 +524,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     juce::StringArray distortionTypeArray;
     distortionTypeArray.add("Soft Clipping");
     distortionTypeArray.add("Hard Clipping");
+    distortionTypeArray.add("Bit Crushing");
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("CrossoverLow", 107), "Crossover Low",
         juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.25f), 200.0f));

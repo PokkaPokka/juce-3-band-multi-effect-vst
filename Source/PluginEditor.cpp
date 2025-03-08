@@ -9,201 +9,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-void LookAndFeel::drawRotarySlider(juce::Graphics & g, int x, int y, int width, int height, float sliderPosProportional, float rotaryStartAngle, float rotaryEndAngle, juce::Slider & slider)
-{
-    using namespace juce;
-    auto bounds = Rectangle<float>(x, y, width, height);
-    
-    g.setColour(Colour(240, 240, 215));
-    g.fillEllipse(bounds);
-    
-    g.setColour(Colour(170, 185, 154));
-    g.drawEllipse(bounds, 1.f);
-    
-    if (auto* rswl = dynamic_cast<RotarySliderWithLabels*>(&slider))
-    {
-        auto center = bounds.getCentre();
-        auto angle = jmap(sliderPosProportional, 0.0f, 1.0f, rotaryStartAngle, rotaryEndAngle);
-        
-        Path valueArc;
-        Path minMaxArc;
-        Rectangle<float> outerBounds = bounds.reduced(-4.0f); // Slightly larger than the slider
-        
-        minMaxArc.addCentredArc(center.x, center.y, outerBounds.getWidth() * 0.485f, outerBounds.getHeight() * 0.485f,
-                                0.0f, degreesToRadians(-135.f), degreesToRadians(180.f - 45.f), true);
-        
-        valueArc.addCentredArc(center.x, center.y, outerBounds.getWidth() * 0.485f, outerBounds.getHeight() * 0.485f,
-                               0.0f, rotaryStartAngle, angle, true);
-        
-        g.setColour(Colour(170, 185, 154).brighter());
-        g.strokePath(minMaxArc, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::butt));
-        
-        g.setColour(Colour(170, 185, 154));
-        g.strokePath(valueArc, PathStrokeType(5.f, PathStrokeType::curved, PathStrokeType::butt));
-        
-        Path p;
-        
-        Rectangle<float> r;
-        r.setLeft(center.getX() - 1);
-        r.setRight(center.getX() + 1);
-        r.setTop(bounds.getY());
-        r.setBottom(center.getY());
-        
-        p.addRoundedRectangle(r, 2);
-        
-        jassert(rotaryStartAngle < rotaryEndAngle);
-        
-        auto sliderAngRad = jmap(sliderPosProportional, 0.f, 1.f, rotaryStartAngle, rotaryEndAngle);
-        p.applyTransform(AffineTransform().rotated(sliderAngRad, center.getX(), center.getY()));
-        
-        g.fillPath(p);
-        
-        // Draw parameter ID above the slider
-        if (rswl->param) {
-            auto paramID = rswl->param->getParameterID();
-            bool isPeakParam = (paramID == "Peak Frequency" || paramID == "Peak Gain" || paramID == "Peak Quality");
+// ====================================== Response Curve ====================================== //
 
-            g.setFont(rswl->getTextHeight() + (isPeakParam ? -2 : -1));
-            g.setColour(Colour(114, 125, 115));
-
-            auto paramName = rswl->param->name;
-            auto textWidth = g.getCurrentFont().getStringWidth(paramName);
-            
-            Rectangle<float> paramNameBounds(textWidth + 6, rswl->getTextHeight() + 2);
-            paramNameBounds.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() * 2);
-
-            g.setColour(Colour(208, 221, 208));
-            g.fillRect(paramNameBounds);
-            
-            g.setColour(Colour(170, 185, 154));
-            g.drawFittedText(paramName, paramNameBounds.toNearestInt(), juce::Justification::centred, 1);
-        }
-
-        if (rswl->param != nullptr && (rswl->param->getParameterID() == "Peak Frequency" || rswl->param->getParameterID() == "Peak Gain" || rswl->param->getParameterID() == "Peak Quality")) {
-            g.setFont(rswl->getTextHeight());
-        } else {
-            g.setFont(rswl->getTextHeight() + 1);
-        }
-        auto text = rswl->getDisplayString();
-        auto strWidth = g.getCurrentFont().getStringWidth(text) + 2;
-        
-        if (rswl->param != nullptr && (rswl->param->getParameterID() == "Peak Frequency" || rswl->param->getParameterID() == "Peak Gain" || rswl->param->getParameterID() == "Peak Quality")) {
-            r.setSize(strWidth + 2, rswl->getTextHeight() - 1);
-        } else {
-            r.setSize(strWidth + 4, rswl->getTextHeight() + 1);
-        }
-        r.setCentre(bounds.getCentreX(), bounds.getY() - rswl->getTextHeight() + 1);
-        
-        g.setColour(Colour(208, 221, 208));
-        g.fillRect(r);
-        
-        g.setColour(Colour(114, 125, 115));
-        g.drawFittedText(text, r.toNearestInt(), juce::Justification::centred, 1);
-    }
-}
-
-//==============================================================================
-void RotarySliderWithLabels::paint(juce::Graphics &g)
-{
-    using namespace juce;
-    
-    auto startAng = degreesToRadians(180.f + 45.f);
-    auto endAng = degreesToRadians(180.f - 45.f) + MathConstants<float>::twoPi;
-    
-    auto range = getRange();
-    auto sliderBounds = getSliderBounds();
-    
-//    g.setColour(Colours::red);
-//    g.drawRect(getLocalBounds());
-//    g.setColour(Colours::yellow);
-//    g.drawRect(sliderBounds);
-   
-    getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(), sliderBounds.getWidth(), sliderBounds.getHeight(), jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0), startAng, endAng, *this);
-    
-    auto center = sliderBounds.toFloat().getCentre();
-    auto radius = sliderBounds.getWidth() * 0.5;
-    
-    g.setColour(Colour(170, 185, 154));
-    
-    auto numChoices = labels.size();
-    for (int i = 0; i < numChoices; ++i) {
-        g.setFont(param != nullptr && (param->getParameterID() == "Peak Frequency" ||
-                                       param->getParameterID() == "Peak Gain" ||
-                                       param->getParameterID() == "Peak Quality")
-                      ? getTextHeight() - 3
-                      : getTextHeight() - 1);
-
-        auto pos = labels[i].pos;
-        jassert(0.f <= pos);
-        jassert(pos <= 1.f);
-
-        auto ang = jmap(pos, 0.0f, 1.0f, startAng, endAng);
-        auto centerPoint = center.getPointOnCircumference(radius + getTextHeight() * 0.5f + 1, ang);
-
-        Rectangle<float> r;
-        auto str = labels[i].label;
-
-        r.setSize(g.getCurrentFont().getStringWidth(str), getTextHeight());
-        r.setCentre(centerPoint);
-        r.setY(r.getY() + getTextHeight() - (param != nullptr &&
-                                              (param->getParameterID() == "Peak Frequency" ||
-                                               param->getParameterID() == "Peak Gain" ||
-                                               param->getParameterID() == "Peak Quality")
-                                              ? 7
-                                              : 5));
-
-        g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);    }
-}
-
-juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
-{
-    auto bounds = getLocalBounds();
-    auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) - 35;
-    
-    size -= getTextHeight() * 2;
-    juce::Rectangle<int> r;
-    r.setSize(size, size);
-    r.setCentre(bounds.getCentreX(), 0);
-    r.setY(48);
-    
-    return r;
-}
-
-juce::String RotarySliderWithLabels::getDisplayString() const
-{
-    juce::String str;
-    
-    if (auto* choiceParam = dynamic_cast<juce::AudioParameterChoice*>(param)) {
-        return choiceParam->getCurrentChoiceName();
-    } else {
-        str << getValue();
-        if (suffix.isNotEmpty()) {
-            str << " " << suffix;
-        }
-        return str;
-    }
-}
-
-void _3BandMultiEffectorAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
-{
-    if (slider == &crossoverLowSlider)
-    {
-        if (crossoverLowSlider.getValue() > crossoverHighSlider.getValue()) {
-            crossoverHighSlider.setValue(crossoverLowSlider.getValue(), juce::sendNotificationSync);
-            responseCurveComponent.updateChain();
-            responseCurveComponent.repaint();
-        }
-    }
-    else if (slider == &crossoverHighSlider)
-    {
-        if (crossoverHighSlider.getValue() < crossoverLowSlider.getValue()) {
-            crossoverLowSlider.setValue(crossoverHighSlider.getValue(), juce::sendNotificationSync);
-            responseCurveComponent.updateChain();
-            responseCurveComponent.repaint();
-        }
-    }
-}
-//==============================================================================
 ResponseCurveComponent::ResponseCurveComponent(_3BandMultiEffectorAudioProcessor& p): audioProcessor(p),
 leftPathProducer(audioProcessor.leftChannelFifo),
 rightPathProducer(audioProcessor.rightChannelFifo)
@@ -300,10 +107,10 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
     using namespace juce;
 
     auto bounds = getLocalBounds();
-    g.fillAll(Colour(114, 125, 115).darker());
+    g.fillAll(responseCurveBG.darker());
 
     // Inner shadow effect
-    DropShadow shadow(Colour(114, 125, 115), 28, Point<int>(0, 0));
+    DropShadow shadow(responseCurveBG, 28, Point<int>(0, 0));
     Image shadowImage(Image::ARGB, bounds.getWidth(), bounds.getHeight(), true);
     Graphics shadowGraphics(shadowImage);
     shadowGraphics.setColour(Colours::transparentWhite);
@@ -360,13 +167,13 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
     // Draw FFT paths
     auto leftChannelFFTPath = leftPathProducer.getPath();
     auto rightChannelFFTPath = rightPathProducer.getPath();
-    g.setColour(Colour(208, 221, 208).withAlpha(0.7f));
+    g.setColour(fftLeft.withAlpha(0.7f));
     g.strokePath(leftChannelFFTPath, PathStrokeType(1.f));
-    g.setColour(Colour(188, 159, 139).withAlpha(0.7f));
+    g.setColour(fftRight.withAlpha(0.7f));
     g.strokePath(rightChannelFFTPath, PathStrokeType(1.f));
 
     // Draw the response curve
-    g.setColour(Colour(240, 240, 215));
+    g.setColour(responseCurveLine);
     g.strokePath(responseCurve, PathStrokeType(2.f));
 
     // *** Draw crossover lines ***
@@ -377,21 +184,21 @@ void ResponseCurveComponent::paint(juce::Graphics& g)
 
     // Draw low crossover area
     float lowX = mapFreqToX(lowBandLine);
-    g.setColour(Colour(240, 240, 215).withAlpha(0.6f));
+    g.setColour(responseCurveLine.withAlpha(0.6f));
     g.fillRect(Rectangle<float> (lowX, 0, 2.0f, responseArea.getBottom() * 1.1));
-    g.setColour(Colour(217, 157, 129).withAlpha(0.15f));
+    g.setColour(crossoverLeft.withAlpha(0.15f));
     g.fillRect(Rectangle<float> (0, 0, lowX, responseArea.getBottom() * 1.1));
     
     
     // Draw high crossover area
     float highX = mapFreqToX(highBandLine);
-    g.setColour(Colour(240, 240, 215).withAlpha(0.6f));
+    g.setColour(responseCurveLine.withAlpha(0.6f));
     g.fillRect(Rectangle<float> (highX, 0, 2.0f, responseArea.getBottom() * 1.1));
-    g.setColour(Colour(255, 232, 182).withAlpha(0.15f));
+    g.setColour(crossoverRight.withAlpha(0.15f));
     g.fillRect(Rectangle<float> (highX, 0, getRenderArea().getWidth() - highX, responseArea.getBottom() * 1.1));
     
     // Draw mid crossover area
-    g.setColour(Colour(162, 123, 92).withAlpha(0.15f));
+    g.setColour(crossoverMid.withAlpha(0.15f));
     g.fillRect(Rectangle<float> (0, 0, highX, responseArea.getBottom() * 1.1));
 }
 
@@ -408,7 +215,7 @@ void ResponseCurveComponent::resized()
         20000
     };
     
-    g.setColour(Colour(240, 240, 215).darker().withAlpha(0.3f));
+    g.setColour(responseCurveLine.darker().withAlpha(0.3f));
     for (auto f: freqs) {
         auto normX = mapFromLog10(f, 20.f, 20000.f);
         g.drawVerticalLine(getWidth() * normX, 0.f, getHeight());
@@ -431,7 +238,214 @@ juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
     bounds.reduce(0, 5);
     return bounds;
 }
-//==============================================================================
+
+// ====================================== Rotary Slider ====================================== //
+
+// LookAndFeel class for consistent UI styling
+void LookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
+                                  float sliderPosProportional, float rotaryStartAngle,
+                                  float rotaryEndAngle, juce::Slider& slider)
+{
+    using namespace juce;
+    auto bounds = Rectangle<float>(x, y, width, height);
+    auto center = bounds.getCentre();
+
+    // Draw base ellipse
+    g.setColour(knob);
+    g.fillEllipse(bounds);
+    g.setColour(knobOutline);
+    g.drawEllipse(bounds, 1.f);
+
+    if (auto* rswl = dynamic_cast<RotarySliderWithLabels*>(&slider))
+    {
+        // Common setup
+        auto paramID = rswl->param->getParameterID();
+        bool isPeakParam = (paramID == "Peak Frequency" || paramID == "Peak Gain" || paramID == "Peak Quality");
+        float arcThickness = isPeakParam ? 4.f : 5.f;
+        auto outerBounds = bounds.reduced(isPeakParam ? -3.f : -4.f);
+        float radius = outerBounds.getWidth() * 0.485f;
+
+        // Draw arcs
+        Path minMaxArc;
+        minMaxArc.addCentredArc(center.x, center.y, radius, radius, 0.0f,
+                               degreesToRadians(-135.f), degreesToRadians(135.f), true);
+        
+        Path valueArc;
+        auto angle = jmap(sliderPosProportional, 0.f, 1.f, rotaryStartAngle, rotaryEndAngle);
+        valueArc.addCentredArc(center.x, center.y, radius, radius, 0.0f,
+                              rotaryStartAngle, angle, true);
+
+        g.setColour(knobOutline);
+        g.strokePath(minMaxArc, PathStrokeType(arcThickness, PathStrokeType::curved, PathStrokeType::butt));
+        g.setColour(knobPointer);
+        g.strokePath(valueArc, PathStrokeType(arcThickness, PathStrokeType::curved, PathStrokeType::butt));
+
+        // Draw pointer
+        Path p;
+        Rectangle<float> r(center.getX() - 1, bounds.getY(), 2, center.getY() - bounds.getY());
+        p.addRoundedRectangle(r, 2);
+        p.applyTransform(AffineTransform().rotated(angle, center.getX(), center.getY()));
+        g.fillPath(p);
+
+        // Draw parameter name (if applicable)
+        if (rswl->param)
+        {
+            auto paramName = rswl->param->name;
+            g.setFont(rswl->getTextHeight() + (isPeakParam ? -2 : -1));
+            auto textWidth = g.getCurrentFont().getStringWidth(paramName);
+            Rectangle<float> paramNameBounds(textWidth + 6, rswl->getTextHeight() + 2);
+            paramNameBounds.setCentre(center.getX(), bounds.getY() - rswl->getTextHeight() * 2);
+
+            g.setColour(generalBG);
+            g.fillRect(paramNameBounds);
+            g.setColour(parameterNameText);
+            g.drawFittedText(paramName, paramNameBounds.toNearestInt(), Justification::centred, 1);
+        }
+
+        // Draw value text
+        g.setFont(rswl->getTextHeight() + (isPeakParam ? 0 : 1));
+        auto text = rswl->getDisplayString();
+        auto strWidth = g.getCurrentFont().getStringWidth(text);
+        r.setSize(strWidth + (isPeakParam ? 4 : 6), rswl->getTextHeight() + (isPeakParam ? -1 : 1));
+        r.setCentre(center.getX(), bounds.getY() - rswl->getTextHeight() + 1);
+
+        g.setColour(generalBG);
+        g.fillRect(r);
+        g.setColour(parameterValueText);
+        g.drawFittedText(text, r.toNearestInt(), Justification::centred, 1);
+    }
+}
+
+// Paint the rotary sliders
+void RotarySliderWithLabels::paint(juce::Graphics &g)
+{
+    using namespace juce;
+    
+    auto startAng = degreesToRadians(180.f + 45.f);
+    auto endAng = degreesToRadians(180.f - 45.f) + MathConstants<float>::twoPi;
+    
+    auto range = getRange();
+    auto sliderBounds = getSliderBounds();
+    
+//    g.setColour(Colours::red);
+//    g.drawRect(getLocalBounds());
+//    g.setColour(Colours::yellow);
+//    g.drawRect(sliderBounds);
+   
+    getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(), sliderBounds.getWidth(), sliderBounds.getHeight(), jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0), startAng, endAng, *this);
+    
+    auto center = sliderBounds.toFloat().getCentre();
+    auto radius = sliderBounds.getWidth() * 0.5;
+    
+    g.setColour(parameterNameText);
+    
+    auto numChoices = labels.size();
+    for (int i = 0; i < numChoices; ++i) {
+        g.setFont(param != nullptr && (param->getParameterID() == "Peak Frequency" ||
+                                       param->getParameterID() == "Peak Gain" ||
+                                       param->getParameterID() == "Peak Quality")
+                      ? getTextHeight() - 3
+                      : getTextHeight() - 1);
+
+        auto pos = labels[i].pos;
+        jassert(0.f <= pos);
+        jassert(pos <= 1.f);
+
+        auto ang = jmap(pos, 0.0f, 1.0f, startAng, endAng);
+        auto centerPoint = center.getPointOnCircumference(radius + getTextHeight() * 0.5f + 1, ang);
+
+        Rectangle<float> r;
+        auto str = labels[i].label;
+
+        r.setSize(g.getCurrentFont().getStringWidth(str), getTextHeight());
+        r.setCentre(centerPoint);
+        r.setY(r.getY() + getTextHeight() - (param != nullptr &&
+                                              (param->getParameterID() == "Peak Frequency" ||
+                                               param->getParameterID() == "Peak Gain" ||
+                                               param->getParameterID() == "Peak Quality")
+                                              ? 7
+                                              : 5));
+
+        g.drawFittedText(str, r.toNearestInt(), juce::Justification::centred, 1);    }
+}
+
+juce::Rectangle<int> RotarySliderWithLabels::getSliderBounds() const
+{
+    auto bounds = getLocalBounds();
+    auto size = juce::jmin(bounds.getWidth(), bounds.getHeight()) - 35;
+    
+    size -= getTextHeight() * 2;
+    juce::Rectangle<int> r;
+    r.setSize(size, size);
+    r.setCentre(bounds.getCentreX(), 0);
+    r.setY(48);
+    
+    return r;
+}
+
+juce::String RotarySliderWithLabels::getDisplayString() const
+{
+    juce::String str;
+    
+    if (auto* choiceParam = dynamic_cast<juce::AudioParameterChoice*>(param)) {
+        return choiceParam->getCurrentChoiceName();
+    } else {
+        str << getValue();
+        if (suffix.isNotEmpty()) {
+            str << " " << suffix;
+        }
+        return str;
+    }
+}
+
+void _3BandMultiEffectorAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
+{
+    if (slider == &crossoverLowSlider)
+    {
+        if (crossoverLowSlider.getValue() > crossoverHighSlider.getValue()) {
+            crossoverHighSlider.setValue(crossoverLowSlider.getValue(), juce::sendNotificationSync);
+            responseCurveComponent.updateChain();
+            responseCurveComponent.repaint();
+        }
+    }
+    else if (slider == &crossoverHighSlider)
+    {
+        if (crossoverHighSlider.getValue() < crossoverLowSlider.getValue()) {
+            crossoverLowSlider.setValue(crossoverHighSlider.getValue(), juce::sendNotificationSync);
+            responseCurveComponent.updateChain();
+            responseCurveComponent.repaint();
+        }
+    }
+}
+
+// ====================================== Combo Box ====================================== //
+
+void setDistortionComboBoxBounds(juce::Rectangle<int> bounds, int comboBoxHeight,
+                                 juce::ComboBox& lowCombo, juce::ComboBox& midCombo, juce::ComboBox& highCombo)
+{
+    bounds.setHeight(comboBoxHeight);
+    bounds.setTop(bounds.getY() + 10);
+
+    // Reduce the total width allocated to combo boxes
+    int totalComboBoxWidth = bounds.getWidth() * 0.75f;
+    int comboBoxWidth = totalComboBoxWidth / 3;  // Divide equally for three combo boxes
+    int spacing = (bounds.getWidth() - totalComboBoxWidth) / 4;  // Distribute space
+
+    // Position each combo box with spacing
+    lowCombo.setBounds(bounds.getX() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
+    midCombo.setBounds(lowCombo.getRight() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
+    highCombo.setBounds(midCombo.getRight() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
+}
+
+_3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
+{
+    lowDistortionTypeComboBox.setLookAndFeel(nullptr);
+    midDistortionTypeComboBox.setLookAndFeel(nullptr);
+    highDistortionTypeComboBox.setLookAndFeel(nullptr);
+}
+
+// ====================================== Processor Editor ====================================== //
+
 _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor(_3BandMultiEffectorAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p),
       peakFreqSlider(*audioProcessor.apvts.getParameter("Peak Frequency"), "Hz"),
@@ -547,12 +561,15 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
     // Add distortion type options to combo boxes
     lowDistortionTypeComboBox.addItem("Soft Clipping", 1);
     lowDistortionTypeComboBox.addItem("Hard Clipping", 2);
+    lowDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
 
     midDistortionTypeComboBox.addItem("Soft Clipping", 1);
     midDistortionTypeComboBox.addItem("Hard Clipping", 2);
+    midDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
 
     highDistortionTypeComboBox.addItem("Soft Clipping", 1);
     highDistortionTypeComboBox.addItem("Hard Clipping", 2);
+    highDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
 
     // Set custom look and feel for combo boxes
     lowDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
@@ -582,35 +599,10 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
     setSize(500, 850);
 }
 
-void setDistortionComboBoxBounds(juce::Rectangle<int> bounds, int comboBoxHeight,
-                                 juce::ComboBox& lowCombo, juce::ComboBox& midCombo, juce::ComboBox& highCombo)
-{
-    bounds.setHeight(comboBoxHeight);
-    bounds.setTop(bounds.getY() + 10);
-
-    // Reduce the total width allocated to combo boxes
-    int totalComboBoxWidth = bounds.getWidth() * 0.7;
-    int comboBoxWidth = totalComboBoxWidth / 3;  // Divide equally for three combo boxes
-    int spacing = (bounds.getWidth() - totalComboBoxWidth) / 4;  // Distribute space
-
-    // Position each combo box with spacing
-    lowCombo.setBounds(bounds.getX() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
-    midCombo.setBounds(lowCombo.getRight() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
-    highCombo.setBounds(midCombo.getRight() + spacing, bounds.getY(), comboBoxWidth, comboBoxHeight);
-}
-
-_3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEditor()
-{
-    lowDistortionTypeComboBox.setLookAndFeel(nullptr);
-    midDistortionTypeComboBox.setLookAndFeel(nullptr);
-    highDistortionTypeComboBox.setLookAndFeel(nullptr);
-}
-
-//==============================================================================
 void _3BandMultiEffectorAudioProcessorEditor::paint(juce::Graphics& g)
 {
     using namespace juce;
-    g.fillAll (Colour(208, 221, 208));
+    g.fillAll (generalBG);
 }
 
 void _3BandMultiEffectorAudioProcessorEditor::resized()
@@ -667,15 +659,8 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     distortionBounds.setTop(crossoverArea.getBottom() + 10);
     distortionBounds.setHeight(comboBoxHeight);
 
-    // Reduce the total width allocated to combo boxes
-    int totalComboBoxWidth = distortionBounds.getWidth() * 0.7;
-    int comboBoxWidth = totalComboBoxWidth / 3;  // Divide equally for three combo boxes
-    int spacing = (distortionBounds.getWidth() - totalComboBoxWidth) / 4;  // Distribute space
-
-    // Position each combo box with spacing
-    lowDistortionTypeComboBox.setBounds(distortionBounds.getX() + spacing, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
-    midDistortionTypeComboBox.setBounds(lowDistortionTypeComboBox.getRight() + spacing, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
-    highDistortionTypeComboBox.setBounds(midDistortionTypeComboBox.getRight() + spacing, distortionBounds.getY(), comboBoxWidth, comboBoxHeight);
+    setDistortionComboBoxBounds(distortionBounds, comboBoxHeight,
+                                 lowDistortionTypeComboBox, midDistortionTypeComboBox, highDistortionTypeComboBox);
     
     // Layout the band controls
     auto bandArea = getLocalBounds();

@@ -3,11 +3,6 @@
 
     This file contains the basic framework code for a JUCE plugin editor.
     Responsible for the visual element of the plugin.
- 
-     Dark Green: (114, 125, 115)
-     Light Green: (170, 185, 154)
-     Light Blue: (208, 221, 208)
-     Creamy White: (240, 240, 215)
 
   ==============================================================================
 */
@@ -16,6 +11,28 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+
+const juce::Colour responseCurveBG = juce::Colour(29, 32, 33);
+const juce::Colour responseCurveLine = juce::Colour(219, 208, 171);
+const juce::Colour fftLeft = juce::Colour(251, 73, 52);
+const juce::Colour fftRight = juce::Colour(235, 219, 178);
+
+const juce::Colour crossoverLeft = juce::Colour(217, 157, 129);
+const juce::Colour crossoverMid = juce::Colour(162, 123, 92);
+const juce::Colour crossoverRight = juce::Colour(255, 232, 182);
+
+const juce::Colour parameterNameText = juce::Colour(219, 208, 171);
+const juce::Colour parameterValueText = juce::Colour(168, 153, 132);
+
+const juce::Colour knob = juce::Colour(219, 208, 171);
+const juce::Colour knobOutline = juce::Colour(168, 153, 132);
+const juce::Colour knobPointer = juce::Colour(251, 73, 52);
+const juce::Colour comboBox = juce::Colour(219, 208, 171);
+const juce::Colour comboBoxText = juce::Colour(168, 153, 132);
+
+const juce::Colour generalBG = juce::Colour(50, 48, 47);
+
+// ====================================== FFT ====================================== //
 
 enum FFTOrder
 {
@@ -76,7 +93,6 @@ struct FFTDataGenerator
         //when you change order, recreate the window, forwardFFT, fifo, fftData
         //also reset the fifoIndex
         //things that need recreating should be created on the heap via std::make_unique<>
-        
         order = newOrder;
         auto fftSize = getFFTSize();
         
@@ -88,10 +104,8 @@ struct FFTDataGenerator
 
         fftDataFifo.prepare(fftData.size());
     }
-    //==============================================================================
     int getFFTSize() const { return 1 << order; }
     int getNumAvailableFFTDataBlocks() const { return fftDataFifo.getNumAvailableForReading(); }
-    //==============================================================================
     bool getFFTData(BlockType& fftData) { return fftDataFifo.pull(fftData); }
 private:
     FFTOrder order;
@@ -101,6 +115,9 @@ private:
     
     Fifo<BlockType> fftDataFifo;
 };
+
+
+// ====================================== Path Generator ====================================== //
 
 template<typename PathType>
 struct AnalyzerPathGenerator
@@ -132,7 +149,6 @@ struct AnalyzerPathGenerator
 
         auto y = map(renderData[0]);
 
-//        jassert( !std::isnan(y) && !std::isinf(y) );
         if( std::isnan(y) || std::isinf(y) )
             y = bottom;
         
@@ -143,8 +159,6 @@ struct AnalyzerPathGenerator
         for( int binNum = 1; binNum < numBins; binNum += pathResolution )
         {
             y = map(renderData[binNum]);
-
-//            jassert( !std::isnan(y) && !std::isinf(y) );
 
             if( !std::isnan(y) && !std::isinf(y) )
             {
@@ -169,70 +183,6 @@ struct AnalyzerPathGenerator
     }
 private:
     Fifo<PathType> pathFifo;
-};
-
-//==============================================================================
-
-struct CustomLookAndFeelComboBox: juce::LookAndFeel_V4
-{
-    CustomLookAndFeelComboBox()
-    {
-        /*
-        Dark Green: (114, 125, 115)
-        Light Green: (170, 185, 154)
-        Light Blue: (208, 221, 208)
-        Creamy White: (240, 240, 215)
-         */
-        setColour(juce::ComboBox::backgroundColourId, juce::Colour(240, 240, 215));
-        setColour(juce::ComboBox::outlineColourId, juce::Colour(170, 185, 154));
-        setColour(juce::ComboBox::arrowColourId, juce::Colour(170, 185, 154));
-        setColour(juce::ComboBox::textColourId, juce::Colour(170, 185, 154));
-    }
-};
-
-struct LookAndFeel: juce::LookAndFeel_V4
-{
-    void drawRotarySlider (juce::Graphics&,
-                                    int x, int y, int width, int height,
-                                    float sliderPosProportional,
-                                    float rotaryStartAngle,
-                                    float rotaryEndAngle,
-                           juce::Slider&) override;
-};
-
-struct RotarySliderWithLabels: juce::Slider
-{
-    RotarySliderWithLabels(juce::RangedAudioParameter& rap, const juce::String& unitSuffix): juce::Slider(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag, juce::Slider::TextEntryBoxPosition::NoTextBox),
-        param(&rap),
-        suffix(unitSuffix)
-    {
-        setLookAndFeel(&lnf);
-        jassert(param != nullptr);
-    };
-    
-    ~RotarySliderWithLabels()
-    {
-        setLookAndFeel(nullptr);
-    }
-    
-    struct LabelPos
-    {
-        float pos;
-        juce::String label;
-    };
-    
-    juce::Array<LabelPos> labels;
-    
-    void paint(juce::Graphics& g) override;
-    juce::Rectangle<int> getSliderBounds() const;
-    int getTextHeight() const {return 14;}
-    juce::String getDisplayString() const;
-    
-    juce::RangedAudioParameter* param;
-private:
-    LookAndFeel lnf;
-    
-    juce::String suffix;
 };
 
 struct PathProducer
@@ -281,6 +231,68 @@ private:
     PathProducer leftPathProducer, rightPathProducer;
 };
 
+// ====================================== Custom ComboBox ====================================== //
+
+struct CustomLookAndFeelComboBox: juce::LookAndFeel_V4
+{
+    CustomLookAndFeelComboBox()
+    {
+        setColour(juce::ComboBox::backgroundColourId, comboBox);
+        setColour(juce::ComboBox::outlineColourId, comboBoxText);
+        setColour(juce::ComboBox::arrowColourId, comboBoxText);
+        setColour(juce::ComboBox::textColourId, comboBoxText);
+    }
+};
+
+// ====================================== Custom Slider ====================================== //
+
+struct LookAndFeel: juce::LookAndFeel_V4
+{
+    void drawRotarySlider (juce::Graphics&,
+                                    int x, int y, int width, int height,
+                                    float sliderPosProportional,
+                                    float rotaryStartAngle,
+                                    float rotaryEndAngle,
+                           juce::Slider&) override;
+};
+
+struct RotarySliderWithLabels: juce::Slider
+{
+    RotarySliderWithLabels(juce::RangedAudioParameter& rap, const juce::String& unitSuffix): juce::Slider(juce::Slider::SliderStyle::RotaryHorizontalVerticalDrag, juce::Slider::TextEntryBoxPosition::NoTextBox),
+        param(&rap),
+        suffix(unitSuffix)
+    {
+        setLookAndFeel(&lnf);
+        jassert(param != nullptr);
+    };
+    
+    ~RotarySliderWithLabels()
+    {
+        setLookAndFeel(nullptr);
+    }
+    
+    struct LabelPos
+    {
+        float pos;
+        juce::String label;
+    };
+    
+    juce::Array<LabelPos> labels;
+    
+    void paint(juce::Graphics& g) override;
+    juce::Rectangle<int> getSliderBounds() const;
+    int getTextHeight() const {return 14;}
+    juce::String getDisplayString() const;
+    
+    juce::RangedAudioParameter* param;
+private:
+    LookAndFeel lnf;
+    
+    juce::String suffix;
+};
+
+// ====================================== Section Divider ====================================== //
+
 class DividerComponent : public juce::Component
 {
 public:
@@ -296,16 +308,14 @@ public:
     }
 };
 
-//==============================================================================
-/**
-*/
+// ====================================== Main Editor Class ====================================== //
+
 class _3BandMultiEffectorAudioProcessorEditor  : public juce::AudioProcessorEditor, public juce::Slider::Listener
 {
 public:
     _3BandMultiEffectorAudioProcessorEditor (_3BandMultiEffectorAudioProcessor&);
     ~_3BandMultiEffectorAudioProcessorEditor() override;
 
-    //==============================================================================
     void paint (juce::Graphics&) override;
     void sliderValueChanged(juce::Slider* slider) override;
     void resized() override;
