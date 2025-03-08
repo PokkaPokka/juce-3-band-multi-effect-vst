@@ -306,7 +306,7 @@ void LookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, i
         g.setFont(rswl->getTextHeight() + (isPeakParam ? 0 : 1));
         auto text = rswl->getDisplayString();
         auto strWidth = g.getCurrentFont().getStringWidth(text);
-        r.setSize(strWidth + (isPeakParam ? 4 : 6), rswl->getTextHeight() + (isPeakParam ? -1 : 1));
+        r.setSize(strWidth + (isPeakParam ? 4 : 6), rswl->getTextHeight() + (isPeakParam ? -1 : 0));
         r.setCentre(center.getX(), bounds.getY() - rswl->getTextHeight() + 1);
 
         g.setColour(generalBG);
@@ -562,14 +562,18 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
     lowDistortionTypeComboBox.addItem("Soft Clipping", 1);
     lowDistortionTypeComboBox.addItem("Hard Clipping", 2);
     lowDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
+    lowDistortionTypeComboBox.addItem("Bit Crusher", 4);
+    
 
     midDistortionTypeComboBox.addItem("Soft Clipping", 1);
     midDistortionTypeComboBox.addItem("Hard Clipping", 2);
     midDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
+    midDistortionTypeComboBox.addItem("Bit Crusher", 4);
 
     highDistortionTypeComboBox.addItem("Soft Clipping", 1);
     highDistortionTypeComboBox.addItem("Hard Clipping", 2);
     highDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
+    highDistortionTypeComboBox.addItem("Bit Crusher", 4);
 
     // Set custom look and feel for combo boxes
     lowDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);

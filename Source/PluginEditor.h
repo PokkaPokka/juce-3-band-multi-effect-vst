@@ -302,7 +302,7 @@ public:
     void paint(juce::Graphics& g) override
     {
         // Set the divider color and draw a horizontal line across the component.
-        g.setColour(juce::Colour(170, 185, 154).brighter());
+        g.setColour(knob.withAlpha(0.3f));
         auto bounds = getLocalBounds().toFloat();
         g.drawLine(bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY(), 1.0f);
     }

@@ -155,7 +155,8 @@ enum DistortionType
 {
     SoftClipping,
     HardClipping,
-    ArcTan
+    ArcTan,
+    BitCrusher
 };
 
 struct BandSettings {
@@ -202,6 +203,18 @@ public:
         processorChain.template get<waveshaperIndex>().functionToUse = func;
     }
 
+    void reduceBitDepth(float bitDepth)
+    {
+        // Thread-local static storage to preserve quantization levels
+        static thread_local float tls_quantizationLevels;
+        tls_quantizationLevels = std::pow(2.0f, bitDepth);
+        
+        // Convert to non-capturing lambda via static access
+        processorChain.template get<waveshaperIndex>().functionToUse = [](float x) {
+            return std::round(x * tls_quantizationLevels) / tls_quantizationLevels;
+        };
+    }
+    
     void process(juce::dsp::ProcessContextReplacing<float>& context)
     {
         processorChain.process(context);

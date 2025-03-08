@@ -389,6 +389,9 @@ void _3BandMultiEffectorAudioProcessor::updateBandDistortion(
         case DistortionType::ArcTan:
             distortionProcessor.setWaveshaperFunction([](float x) -> float { return 2 / M_PI * std::atan(x); });
             break;
+        case DistortionType::BitCrusher:
+            distortionProcessor.reduceBitDepth(bandSettings.drive);
+            break;
         default:
             distortionProcessor.setWaveshaperFunction([](float x) { return std::tanh(x); });
             break;
@@ -524,6 +527,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     juce::StringArray distortionTypeArray;
     distortionTypeArray.add("Soft Clipping");
     distortionTypeArray.add("Hard Clipping");
+    distortionTypeArray.add("ArcTan Distortion");
     distortionTypeArray.add("Bit Crushing");
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("CrossoverLow", 107), "Crossover Low",
