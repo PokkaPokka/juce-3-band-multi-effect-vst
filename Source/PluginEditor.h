@@ -27,8 +27,10 @@ const juce::Colour parameterValueText = juce::Colour(168, 153, 132);
 const juce::Colour knob = juce::Colour(219, 208, 171);
 const juce::Colour knobOutline = juce::Colour(168, 153, 132);
 const juce::Colour knobPointer = juce::Colour(251, 73, 52);
+
 const juce::Colour comboBox = juce::Colour(219, 208, 171);
 const juce::Colour comboBoxText = juce::Colour(168, 153, 132);
+const juce::Colour popUpMenuHighlight = juce::Colour(168, 153, 132);
 
 const juce::Colour generalBG = juce::Colour(50, 48, 47);
 
@@ -240,9 +242,19 @@ struct CustomLookAndFeelComboBox: juce::LookAndFeel_V4
         setColour(juce::ComboBox::backgroundColourId, comboBox);
         setColour(juce::ComboBox::outlineColourId, comboBoxText);
         setColour(juce::ComboBox::arrowColourId, comboBoxText);
-        setColour(juce::ComboBox::textColourId, comboBoxText);
+        setColour(juce::ComboBox::textColourId, comboBoxText.darker());
+        setColour(juce::ComboBox::arrowColourId, comboBoxText.darker());
+        
+        setColour(juce::PopupMenu::backgroundColourId, comboBox);
+        setColour(juce::PopupMenu::highlightedBackgroundColourId, popUpMenuHighlight);
+        setColour(juce::PopupMenu::textColourId, comboBoxText.darker());
+        setColour(juce::PopupMenu::highlightedTextColourId, generalBG);
     }
 };
+
+// ====================================== Custom Button ====================================== //
+
+
 
 // ====================================== Custom Slider ====================================== //
 
@@ -356,6 +368,9 @@ private:
     
     ResponseCurveComponent responseCurveComponent;
     DividerComponent crossoverDivider;
+    
+    juce::TextButton levelCompensationButton;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> levelCompensationButtonAttachment;
     
     // Alias to make this extra name looks cleaner
     using APVTS = juce::AudioProcessorValueTreeState;

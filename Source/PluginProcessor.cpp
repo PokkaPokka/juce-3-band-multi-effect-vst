@@ -199,12 +199,12 @@ void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& b
     rightCrossover.update(chainSettings.crossoverLow, chainSettings.crossoverHigh);
 
     // Update band distortions
-    updateBandDistortion(leftBands[0], chainSettings.lowBand);
-    updateBandDistortion(leftBands[1], chainSettings.midBand);
-    updateBandDistortion(leftBands[2], chainSettings.highBand);
-    updateBandDistortion(rightBands[0], chainSettings.lowBand);
-    updateBandDistortion(rightBands[1], chainSettings.midBand);
-    updateBandDistortion(rightBands[2], chainSettings.highBand);
+    updateBandDistortion(leftBands[0], chainSettings.lowBand, chainSettings);
+    updateBandDistortion(leftBands[1], chainSettings.midBand, chainSettings);
+    updateBandDistortion(leftBands[2], chainSettings.highBand, chainSettings);
+    updateBandDistortion(rightBands[0], chainSettings.lowBand, chainSettings);
+    updateBandDistortion(rightBands[1], chainSettings.midBand, chainSettings);
+    updateBandDistortion(rightBands[2], chainSettings.highBand, chainSettings);
 
     // Convert oversampledBlock to AudioBuffer for EQ'd signal
     juce::AudioBuffer<float> eqBuffer(oversampledBlock.getNumChannels(), oversampledBlock.getNumSamples());
@@ -283,6 +283,8 @@ ChainSettings getChainSettings(juce::AudioProcessorValueTreeState& apvts)
     
     settings.crossoverLow = apvts.getRawParameterValue("CrossoverLow")->load();
     settings.crossoverHigh = apvts.getRawParameterValue("CrossoverHigh")->load();
+    
+    settings.levelCompensation = apvts.getRawParameterValue("LevelCompensation")->load();
     
     settings.lowBand.type = static_cast<DistortionType>(apvts.getRawParameterValue("LowBandType")->load());
     settings.lowBand.drive = apvts.getRawParameterValue("LowBandDrive")->load();
@@ -373,7 +375,8 @@ void CrossoverFilters::update(float crossoverLow, float crossoverHigh) {
 
 void _3BandMultiEffectorAudioProcessor::updateBandDistortion(
     Distortion<float>& distortionProcessor,
-    const BandSettings& bandSettings)
+    const BandSettings& bandSettings,
+    const ChainSettings& chainSettings)
 {
     // Set parameters for this band's distortion
     float drive = bandSettings.drive;
@@ -392,10 +395,16 @@ void _3BandMultiEffectorAudioProcessor::updateBandDistortion(
         case DistortionType::BitCrusher:
             distortionProcessor.reduceBitDepth(bandSettings.drive);
             break;
+        case DistortionType::SineFolding:
+            distortionProcessor.setDrive(drive / 5);
+            distortionProcessor.setWaveshaperFunction([](float x) { return std::sin(x); });
+            break;
         default:
             distortionProcessor.setWaveshaperFunction([](float x) { return std::tanh(x); });
             break;
     }
+    
+    
     
     distortionProcessor.setPostGain(bandSettings.postGain);
 }
@@ -529,12 +538,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     distortionTypeArray.add("Hard Clipping");
     distortionTypeArray.add("ArcTan Distortion");
     distortionTypeArray.add("Bit Crushing");
+    distortionTypeArray.add("Sine Folding");
     
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("CrossoverLow", 107), "Crossover Low",
         juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.25f), 200.0f));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("CrossoverHigh", 108), "Crossover High",
         juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.25f), 2000.0f));
-
+    
     // Low Band Parameters
     layout.add(std::make_unique<juce::AudioParameterChoice>(juce::ParameterID("LowBandType", 109), "Low Band Type", distortionTypeArray, 0));
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("LowBandDrive", 110), "Low Band Drive",
@@ -562,6 +572,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout _3BandMultiEffectorAudioProc
     layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("HighBandMix", 123), "High Band Mix",
         juce::NormalisableRange<float>(0.0f, 100.0f, 1.0f), 50.0f));
 
+    layout.add(std::make_unique<juce::AudioParameterBool>(juce::ParameterID("LevelCompensation", 124), "Level Compensation", true));
+    
     return layout;
 }
 

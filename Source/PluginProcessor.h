@@ -156,7 +156,8 @@ enum DistortionType
     SoftClipping,
     HardClipping,
     ArcTan,
-    BitCrusher
+    BitCrusher,
+    SineFolding
 };
 
 struct BandSettings {
@@ -169,6 +170,7 @@ struct ChainSettings
     float peakFreq {0}, peakGainInDeciibels{0}, peakQuality{1.f};
     float lowCutFreq{0}, highCutFreq{0};
     Slope lowCutSlope {Slope::Slope_12}, highCutSlope {Slope::Slope_12};
+    bool levelCompensation {true};
     DistortionType distortionType {DistortionType::SoftClipping};
     float crossoverLow{ 200.0f }, crossoverHigh{ 2000.0f };
     BandSettings lowBand, midBand, highBand;
@@ -407,7 +409,7 @@ private:
     void updateLowCutFilters(const ChainSettings& chainSettings, float sampleRate);
     void updateHighCutFilters(const ChainSettings& chainSettings, float sampleRate);
     void updateFilters();
-    void updateBandDistortion(Distortion<float>& distortionProcessor, const BandSettings& bandSettings);
+    void updateBandDistortion(Distortion<float>& distortionProcessor, const BandSettings& bandSettings, const ChainSettings& chainSettings);
     void processBand(
         const juce::AudioBuffer<float>& eqBuffer,
         juce::AudioBuffer<float>& output,

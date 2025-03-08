@@ -563,18 +563,29 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
     lowDistortionTypeComboBox.addItem("Hard Clipping", 2);
     lowDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
     lowDistortionTypeComboBox.addItem("Bit Crusher", 4);
+    lowDistortionTypeComboBox.addItem("Sine Folding", 5);
     
-
     midDistortionTypeComboBox.addItem("Soft Clipping", 1);
     midDistortionTypeComboBox.addItem("Hard Clipping", 2);
     midDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
     midDistortionTypeComboBox.addItem("Bit Crusher", 4);
+    midDistortionTypeComboBox.addItem("Sine Folding", 5);
 
     highDistortionTypeComboBox.addItem("Soft Clipping", 1);
     highDistortionTypeComboBox.addItem("Hard Clipping", 2);
     highDistortionTypeComboBox.addItem("ArcTan Distortion", 3);
     highDistortionTypeComboBox.addItem("Bit Crusher", 4);
+    highDistortionTypeComboBox.addItem("Sine Folding", 5);
 
+    levelCompensationButton.setClickingTogglesState(true); // Enable toggle behavior
+        levelCompensationButton.setButtonText("ON"); // Initial text
+        levelCompensationButton.onStateChange = [this]() {
+            levelCompensationButton.setButtonText(levelCompensationButton.getToggleState() ? "ON" : "OFF");
+        };
+    
+    levelCompensationButtonAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            audioProcessor.apvts, "LevelCompensation", levelCompensationButton);
+    
     // Set custom look and feel for combo boxes
     lowDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
     midDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
@@ -655,6 +666,12 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     crossoverLowSlider.setBounds(crossoverArea.removeFromLeft(crossoverArea.getWidth() * 0.5));
     crossoverHighSlider.setBounds(crossoverArea);
     
+    auto buttonArea = getLocalBounds();
+    buttonArea.setTop(crossoverArea.getCentreY());
+    buttonArea.setHeight(20);
+    buttonArea.reduce(230, 0);
+    levelCompensationButton.setBounds(buttonArea);
+    
     // Define height for the ComboBox
     int comboBoxHeight = 25;  // Adjust as needed
 
@@ -719,6 +736,7 @@ std::vector<juce::Component*> _3BandMultiEffectorAudioProcessorEditor::getComps(
         &lowDistortionTypeComboBox,
         &midDistortionTypeComboBox,
         &highDistortionTypeComboBox,
-        &responseCurveComponent
+        &responseCurveComponent,
+        &levelCompensationButton
     };
 }
