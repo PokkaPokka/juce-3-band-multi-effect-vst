@@ -249,12 +249,12 @@ void LookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, i
     using namespace juce;
     auto bounds = Rectangle<float>(x, y, width, height);
     auto center = bounds.getCentre();
-
-    // Draw base ellipse
-    g.setColour(knob);
-    g.fillEllipse(bounds);
-    g.setColour(knobOutline);
-    g.drawEllipse(bounds, 1.f);
+    
+    // Draw shadow for the knob
+    Path knobPath;
+    knobPath.addEllipse(bounds);
+    DropShadow shadow(Colours::black.withAlpha(0.5f), 10, Point<int>(2, 2));
+    shadow.drawForPath(g, knobPath);
 
     if (auto* rswl = dynamic_cast<RotarySliderWithLabels*>(&slider))
     {
@@ -264,6 +264,17 @@ void LookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, i
         float arcThickness = isPeakParam ? 4.f : 5.f;
         auto outerBounds = bounds.reduced(isPeakParam ? -3.f : -4.f);
         float radius = outerBounds.getWidth() * 0.485f;
+        
+        Path valuePath;
+        valuePath.addEllipse(outerBounds);
+        DropShadow shadow(Colours::black.withAlpha(0.6f), 15, Point<int>(2, 2));
+        shadow.drawForPath(g, valuePath);
+        
+        // Draw base ellipse
+        g.setColour(knob);
+        g.fillEllipse(bounds);
+        g.setColour(knobOutline);
+        g.drawEllipse(bounds, 1.f);
 
         // Draw arcs
         Path minMaxArc;
@@ -326,11 +337,6 @@ void RotarySliderWithLabels::paint(juce::Graphics &g)
     
     auto range = getRange();
     auto sliderBounds = getSliderBounds();
-    
-//    g.setColour(Colours::red);
-//    g.drawRect(getLocalBounds());
-//    g.setColour(Colours::yellow);
-//    g.drawRect(sliderBounds);
    
     getLookAndFeel().drawRotarySlider(g, sliderBounds.getX(), sliderBounds.getY(), sliderBounds.getWidth(), sliderBounds.getHeight(), jmap(getValue(), range.getStart(), range.getEnd(), 0.0, 1.0), startAng, endAng, *this);
     
@@ -600,7 +606,7 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
     lowDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
     midDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
     highDistortionTypeComboBox.setLookAndFeel(&customLookAndFeelComboBox);
-
+    
     // Create ComboBoxAttachments to bind combo boxes to parameters
     lowDistortionTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
         audioProcessor.apvts, "LowBandType", lowDistortionTypeComboBox);
@@ -692,7 +698,7 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     crossoverHighSlider.setBounds(crossoverArea);
     
     // Define height for the ComboBox
-    int comboBoxHeight = 25;  // Adjust as needed
+    int comboBoxHeight = 25;
 
     // Get the distortion bounds and set its starting position
     auto distortionBounds = getLocalBounds();

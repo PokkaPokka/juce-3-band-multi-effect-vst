@@ -262,6 +262,7 @@ struct CustomLookAndFeelButton : juce::LookAndFeel_V4
         setColour(juce::TextButton::buttonOnColourId, comboBox);
         setColour(juce::TextButton::textColourOffId, comboBoxText.darker());
         setColour(juce::TextButton::textColourOnId, comboBoxText.darker());
+        setColour(juce::ComboBox::outlineColourId, comboBoxText);
     }
 };
 
@@ -325,7 +326,7 @@ public:
         // Set the divider color and draw a horizontal line across the component.
         g.setColour(knob.withAlpha(0.2f));
         auto bounds = getLocalBounds().toFloat();
-        g.drawLine(bounds.getX() + 20, bounds.getCentreY(), bounds.getRight() - 20, bounds.getCentreY(), 1.0f);
+        g.drawLine(bounds.getX() + 20, bounds.getCentreY(), bounds.getRight() - 20, bounds.getCentreY(), 1.5f);
     }
 };
 
