@@ -633,7 +633,24 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
 void _3BandMultiEffectorAudioProcessorEditor::paint(juce::Graphics& g)
 {
     using namespace juce;
-    g.fillAll (generalBG);
+    g.fillAll(generalBG);
+    
+    DropShadow shadow(Colours::black.withAlpha(0.5f), 10, Point<int>(2, 2));
+    float cornerRadius = 3.0f;
+    
+    auto buttonBounds = levelCompensationButton.getBounds().toFloat();
+    Path buttonPath;
+    buttonPath.addRoundedRectangle(buttonBounds, cornerRadius);
+    shadow.drawForPath(g, buttonPath);
+    
+    for (auto* comp : {&lowDistortionTypeComboBox,
+                      &midDistortionTypeComboBox, &highDistortionTypeComboBox})
+    {
+        auto bounds = comp->getBounds().toFloat();
+        Path path;
+        path.addRoundedRectangle(bounds, cornerRadius);
+        shadow.drawForPath(g, path);
+    }
 }
 
 void _3BandMultiEffectorAudioProcessorEditor::resized()
@@ -687,7 +704,7 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     buttonLabelArea.setLeft(buttonLabelArea.getCentreX() - 75);
     buttonLabelArea.setWidth(150);
     levelCompensationLabel.setBounds(buttonLabelArea);
-    
+
     auto buttonArea = buttonLabelArea;
     buttonArea.setTop(buttonLabelArea.getBottom() + 10);
     buttonArea.setHeight(25);
