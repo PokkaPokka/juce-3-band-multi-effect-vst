@@ -254,7 +254,16 @@ struct CustomLookAndFeelComboBox: juce::LookAndFeel_V4
 
 // ====================================== Custom Button ====================================== //
 
-
+struct CustomLookAndFeelButton : juce::LookAndFeel_V4
+{
+    CustomLookAndFeelButton()
+    {
+        setColour(juce::TextButton::buttonColourId, comboBox);
+        setColour(juce::TextButton::buttonOnColourId, comboBox);
+        setColour(juce::TextButton::textColourOffId, comboBoxText.darker());
+        setColour(juce::TextButton::textColourOnId, comboBoxText.darker());
+    }
+};
 
 // ====================================== Custom Slider ====================================== //
 
@@ -314,9 +323,9 @@ public:
     void paint(juce::Graphics& g) override
     {
         // Set the divider color and draw a horizontal line across the component.
-        g.setColour(knob.withAlpha(0.3f));
+        g.setColour(knob.withAlpha(0.2f));
         auto bounds = getLocalBounds().toFloat();
-        g.drawLine(bounds.getX(), bounds.getCentreY(), bounds.getRight(), bounds.getCentreY(), 1.0f);
+        g.drawLine(bounds.getX() + 20, bounds.getCentreY(), bounds.getRight() - 20, bounds.getCentreY(), 1.0f);
     }
 };
 
@@ -342,6 +351,8 @@ private:
     juce::ComboBox highDistortionTypeComboBox;
     
     CustomLookAndFeelComboBox customLookAndFeelComboBox;
+    
+    CustomLookAndFeelButton customLookAndFeelButton;
     
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> lowDistortionTypeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> midDistortionTypeAttachment;
@@ -369,6 +380,7 @@ private:
     ResponseCurveComponent responseCurveComponent;
     DividerComponent crossoverDivider;
     
+    juce::Label levelCompensationLabel;
     juce::TextButton levelCompensationButton;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> levelCompensationButtonAttachment;
     

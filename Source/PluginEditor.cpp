@@ -442,6 +442,8 @@ _3BandMultiEffectorAudioProcessorEditor::~_3BandMultiEffectorAudioProcessorEdito
     lowDistortionTypeComboBox.setLookAndFeel(nullptr);
     midDistortionTypeComboBox.setLookAndFeel(nullptr);
     highDistortionTypeComboBox.setLookAndFeel(nullptr);
+    
+    levelCompensationButton.setLookAndFeel(nullptr);
 }
 
 // ====================================== Processor Editor ====================================== //
@@ -583,6 +585,14 @@ _3BandMultiEffectorAudioProcessorEditor::_3BandMultiEffectorAudioProcessorEditor
             levelCompensationButton.setButtonText(levelCompensationButton.getToggleState() ? "ON" : "OFF");
         };
     
+    levelCompensationLabel.setText("Level\nCompensation", juce::dontSendNotification);
+    levelCompensationLabel.setJustificationType(juce::Justification::centredTop);
+    levelCompensationLabel.setColour(juce::Label::textColourId, parameterNameText);
+    levelCompensationLabel.setFont(juce::Font(14.0f));
+    levelCompensationLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(levelCompensationLabel);
+    
+    levelCompensationButton.setLookAndFeel(&customLookAndFeelButton);
     levelCompensationButtonAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             audioProcessor.apvts, "LevelCompensation", levelCompensationButton);
     
@@ -663,14 +673,23 @@ void _3BandMultiEffectorAudioProcessorEditor::resized()
     crossoverArea.setTop(bounds.getBottom() + gap / 2);
     
     crossoverArea.setHeight(bounds.getHeight() * 1.3);
-    crossoverLowSlider.setBounds(crossoverArea.removeFromLeft(crossoverArea.getWidth() * 0.5));
-    crossoverHighSlider.setBounds(crossoverArea);
+    crossoverLowSlider.setBounds(crossoverArea.removeFromLeft(crossoverArea.getWidth() * 0.33));
     
-    auto buttonArea = getLocalBounds();
-    buttonArea.setTop(crossoverArea.getCentreY());
-    buttonArea.setHeight(20);
-    buttonArea.reduce(230, 0);
+    auto buttonLabelArea = crossoverArea.removeFromLeft(crossoverArea.getWidth() * 0.5);
+    buttonLabelArea.setTop(crossoverArea.getCentreY() - 30);
+    buttonLabelArea.setHeight(30);
+    buttonLabelArea.setLeft(buttonLabelArea.getCentreX() - 75);
+    buttonLabelArea.setWidth(150);
+    levelCompensationLabel.setBounds(buttonLabelArea);
+    
+    auto buttonArea = buttonLabelArea;
+    buttonArea.setTop(buttonLabelArea.getBottom() + 10);
+    buttonArea.setHeight(25);
+    buttonArea.setLeft(buttonArea.getCentreX() - 20);
+    buttonArea.setWidth(40);
     levelCompensationButton.setBounds(buttonArea);
+    
+    crossoverHighSlider.setBounds(crossoverArea);
     
     // Define height for the ComboBox
     int comboBoxHeight = 25;  // Adjust as needed
