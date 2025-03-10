@@ -423,6 +423,10 @@ private:
     CrossoverFilters leftCrossover, rightCrossover;
     Distortion<float> leftBands[3], rightBands[3]; // 0: low, 1: mid, 2: high
     juce::AudioBuffer<float> tempBuffers[3]; // For band processing
+    
+    float inputRMSLevel{ 0.0f };  // To store the input RMS level
+    float outputRMSLevel{ 0.0f }; // To store the output RMS level after distortion
+    juce::dsp::Gain<float> compensationGain; // Gain processor for level compensation
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessor)
 };

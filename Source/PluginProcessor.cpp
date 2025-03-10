@@ -128,6 +128,10 @@ void _3BandMultiEffectorAudioProcessor::prepareToPlay(double sampleRate, int sam
     // Prepare FIFO buffers with original sample rate
     leftChannelFifo.prepare(samplesPerBlock);
     rightChannelFifo.prepare(samplesPerBlock);
+    
+    // Prepare the compensation gain processor
+    compensationGain.prepare(oversampledSpec);
+    compensationGain.setRampDurationSeconds(0.05);
 
     updateFilters();
 }
@@ -197,7 +201,9 @@ void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& b
     // Update crossovers
     leftCrossover.update(chainSettings.crossoverLow, chainSettings.crossoverHigh);
     rightCrossover.update(chainSettings.crossoverLow, chainSettings.crossoverHigh);
-
+    
+    inputRMSLevel = buffer.getRMSLevel(0, 0, buffer.getNumSamples());
+    
     // Update band distortions
     updateBandDistortion(leftBands[0], chainSettings.lowBand, chainSettings);
     updateBandDistortion(leftBands[1], chainSettings.midBand, chainSettings);
@@ -219,6 +225,25 @@ void _3BandMultiEffectorAudioProcessor::processBlock(juce::AudioBuffer<float>& b
     processBand(eqBuffer, outputBuffer, 0, leftCrossover.lowPassL, rightCrossover.lowPassL, leftBands[0], rightBands[0]);
     processBand(eqBuffer, outputBuffer, 1, leftCrossover.highPassM, rightCrossover.highPassM, leftBands[1], rightBands[1]);
     processBand(eqBuffer, outputBuffer, 2, leftCrossover.highPassH, rightCrossover.highPassH, leftBands[2], rightBands[2]);
+    
+    outputRMSLevel = outputBuffer.getRMSLevel(0, 0, outputBuffer.getNumSamples());
+    
+    if (chainSettings.levelCompensation && inputRMSLevel > 0.0f && outputRMSLevel > 0.0f)
+    {
+        // Calculate the gain needed to match input RMS to output RMS
+        float gainDb = juce::Decibels::gainToDecibels(inputRMSLevel / outputRMSLevel);
+        compensationGain.setGainDecibels(gainDb);
+
+        // Apply the compensation gain to the output buffer
+        juce::dsp::AudioBlock<float> outputBlock(outputBuffer);
+        juce::dsp::ProcessContextReplacing<float> compensationContext(outputBlock);
+        compensationGain.process(compensationContext);
+    }
+    else
+    {
+        // If compensation is off, reset gain to 0 dB (no change)
+        compensationGain.setGainDecibels(0.0f);
+    }
 
     // Create an AudioBlock from the outputBuffer to match the oversampledBlock type
     juce::dsp::AudioBlock<float> outputBlock(outputBuffer);
