@@ -183,15 +183,16 @@ class Distortion
 public:
     Distortion()
     {
-        processorChain.template get<waveshaperIndex>().functionToUse = [](FloatType x) {
-            return std::tanh(x);
-        };
+        processorChain.template get<waveshaperIndex>().functionToUse = [](FloatType x) { return std::tanh(x); };
         processorChain.template get<postGainIndex>().setGainDecibels(0.0f);
+        processorChain.template get<compensationGainIndex>().setGainDecibels(0.0f);
     }
 
     void prepare(const juce::dsp::ProcessSpec& spec)
     {
         processorChain.prepare(spec);
+        lastInputRMS = 0.0f;
+        lastOutputRMS = 0.0f;
     }
 
     void setPostGain(FloatType gain)
@@ -199,7 +200,6 @@ public:
         processorChain.template get<postGainIndex>().setGainDecibels(gain);
     }
 
-    
     void setWaveshaperFunction(float (*func)(float))
     {
         processorChain.template get<waveshaperIndex>().functionToUse = func;
@@ -207,23 +207,69 @@ public:
 
     void reduceBitDepth(float bitDepth)
     {
-        // Thread-local static storage to preserve quantization levels
         static thread_local float tls_quantizationLevels;
         tls_quantizationLevels = std::pow(2.0f, bitDepth);
-        
-        // Convert to non-capturing lambda via static access
         processorChain.template get<waveshaperIndex>().functionToUse = [](float x) {
             return std::round(x * tls_quantizationLevels) / tls_quantizationLevels;
         };
     }
-    
-    void process(juce::dsp::ProcessContextReplacing<float>& context)
+
+    void setDrive(float driveLinear)
     {
-        processorChain.process(context);
-    }
-    
-    void setDrive(float driveLinear) {
         processorChain.template get<driveIndex>().setGainLinear(driveLinear);
+    }
+
+    void process(juce::dsp::ProcessContextReplacing<float>& context, bool enableCompensation)
+    {
+        auto& inputBlock = context.getInputBlock();
+        auto& outputBlock = context.getOutputBlock();
+        auto numSamples = inputBlock.getNumSamples();
+        auto numChannels = inputBlock.getNumChannels();
+
+        // Calculate input RMS manually
+        float inputSumSq = 0.0f;
+        for (size_t channel = 0; channel < numChannels; ++channel)
+        {
+            auto* channelData = inputBlock.getChannelPointer(channel);
+            for (size_t i = 0; i < numSamples; ++i)
+            {
+                float sample = channelData[i];
+                inputSumSq += sample * sample;
+            }
+        }
+        lastInputRMS = std::sqrt(inputSumSq / (numSamples * numChannels));
+
+        // Process drive and waveshaper
+        processorChain.template get<driveIndex>().process(context);
+        processorChain.template get<waveshaperIndex>().process(context);
+
+        // Calculate output RMS manually after waveshaper
+        float outputSumSq = 0.0f;
+        for (size_t channel = 0; channel < numChannels; ++channel)
+        {
+            auto* channelData = outputBlock.getChannelPointer(channel);
+            for (size_t i = 0; i < numSamples; ++i)
+            {
+                float sample = channelData[i];
+                outputSumSq += sample * sample;
+            }
+        }
+        lastOutputRMS = std::sqrt(outputSumSq / (numSamples * numChannels));
+
+        // Apply level compensation if enabled
+        if (enableCompensation && lastInputRMS > 0.0f && lastOutputRMS > 0.0f)
+        {
+            float gainDb = juce::Decibels::gainToDecibels(lastInputRMS / lastOutputRMS);
+            processorChain.template get<compensationGainIndex>().setGainDecibels(gainDb);
+        }
+        else
+        {
+            processorChain.template get<compensationGainIndex>().setGainDecibels(0.0f);
+        }
+
+        // Apply compensation gain and post-gain
+        processorChain.template get<compensationGainIndex>().process(context);
+        processorChain.template get<postGainIndex>().process(context);
     }
 
 private:
@@ -231,16 +277,20 @@ private:
     {
         driveIndex,
         waveshaperIndex,
+        compensationGainIndex,
         postGainIndex
     };
 
     juce::dsp::ProcessorChain<
-        juce::dsp::Gain<float>,   // Drive (linear)
-        juce::dsp::WaveShaper<float>,
-        juce::dsp::Gain<float>    // Post-gain (dB)
+        juce::dsp::Gain<float>,      // Drive (linear)
+        juce::dsp::WaveShaper<float>, // Waveshaper
+        juce::dsp::Gain<float>,      // Compensation Gain (dB)
+        juce::dsp::Gain<float>       // Post-gain (dB)
     > processorChain;
-};
 
+    float lastInputRMS = 0.0f;
+    float lastOutputRMS = 0.0f;
+};
 struct CrossoverFilters {
     juce::dsp::LinkwitzRileyFilter<float> lowPassL, highPassM, lowPassM, highPassH;
     void prepare(const juce::dsp::ProcessSpec& spec);
@@ -424,9 +474,6 @@ private:
     Distortion<float> leftBands[3], rightBands[3]; // 0: low, 1: mid, 2: high
     juce::AudioBuffer<float> tempBuffers[3]; // For band processing
     
-    float inputRMSLevel{ 0.0f };  // To store the input RMS level
-    float outputRMSLevel{ 0.0f }; // To store the output RMS level after distortion
-    juce::dsp::Gain<float> compensationGain; // Gain processor for level compensation
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (_3BandMultiEffectorAudioProcessor)
 };
