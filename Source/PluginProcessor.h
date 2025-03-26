@@ -26,7 +26,7 @@ struct Fifo
                            true);   //avoid reallocating if you can?
             buffer.clear();
         }
-    }
+    } 
     
     void prepare(size_t numElements)
     {
