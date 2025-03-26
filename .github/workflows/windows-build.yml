@@ -1,32 +1,27 @@
-name: Build VST3 for Windows
+name: Build Windows VST3
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build-windows:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout Repository
         uses: actions/checkout@v3
-        with:
-          submodules: recursive
 
-      - name: Install JUCE dependencies
-        run: |
-          git clone --depth 1 https://github.com/juce-framework/JUCE.git
+      - name: Setup MSBuild Path
+        uses: microsoft/setup-msbuild@v1
 
-      - name: Configure CMake
-        run: cmake -B build -S . -DJUCE_DIR=JUCE -DCMAKE_BUILD_TYPE=Release
+      - name: Build Solution
+        run: msbuild YourPlugin.sln /p:Configuration=Release
 
-      - name: Build
-        run: cmake --build build --config Release
-
-      - name: Upload .vst3 plugin
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VST3-Windows
-          path: build/Release/*.vst3
+          name: VST3-Plugin
+          path: path\to\your\build\output\folder
